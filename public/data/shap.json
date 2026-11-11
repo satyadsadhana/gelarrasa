@@ -1,0 +1,1 @@
+{"kontribusi_%":{"Musim (bulan & hari-dalam-tahun)":71.4,"Kelompok kawasan × musim":13.9,"Angin (kecepatan & arah)":5.3,"Kelembapan":5.2,"Suhu":3.7,"Hari dalam seminggu":0.5},"r2_uji_2026":0.717,"r2_latih":0.941,"korelasi_cuaca_per_jam_median":{"temperature_c":-0.12,"humidity_pct":0.01,"wind_speed_ms":0.08}}
