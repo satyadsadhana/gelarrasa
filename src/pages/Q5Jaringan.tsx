@@ -1,7 +1,6 @@
 import { useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
-import StationMap from "../components/StationMap";
 import { Card, Kpi, Page } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt } from "../lib/format";
@@ -11,12 +10,21 @@ import { C, GRADE_STYLE, KAT_COL } from "../lib/theme";
 
 type Score = { code: string; status_metadata: string; grade: string; "hari_valid_%": number; "imputasi_%": number; baris_sensor_beku: number; kategori: string; masalah: string };
 type Prio = { code: string; skor_risiko: number; "hari_valid_%": number; kategori: string };
-type Pairs = { garis_bukti: { a: string; b: string; jenis: string }[]; jmb_jarak_km: number };
+type Pairs = { garis_bukti: { a: string; b: string; jenis: string }[]; jmb_jarak_km: number; pasangan_r099: { "beda_level_%": number }[] };
 type Anom = { "gambut_di_musim_asap_%": number; data: { code: string; hari_anomali: number; "di_musim_asap_%": number }[] };
 
 const KAT_LAB: Record<string, string> = { Andal: "Andal", "Diakui metadata": "Diakui metadata", "TERSEMBUNYI (status Active)": "Tersembunyi" };
 
 type SortKey = "code" | "grade" | "hari_valid_%" | "imputasi_%" | "baris_sensor_beku" | "kategori";
+
+/** shortcut: salinan Tabel 3.5 laporan (laporan/build_docx.py); ubah keduanya bersamaan. */
+const PRIO = [
+  { w: "Kalimantan Selatan & Timur", why: "Pulau paling pekat (55,9 µg/m³), tapi Banjarbaru grade D dan Samarinda grade C.", act: "Ganti/kalibrasi sensor, tambah titik gambut Kalsel" },
+  { w: "Koridor gambut Kalimantan Tengah", why: "Memburuk +295%, tapi dua dari tiga stasiun memberi deret yang sama.", act: "Pindah satu unit kembar setelah verifikasi lapangan" },
+  { w: "Muaro Jambi", why: "JMB-02 rusak (0,5% data) dan hanya 0,87 km dari JMB-01.", act: "Pasang ulang di gambut Mestong" },
+  { w: "Papua Selatan", why: "Merauke hanya 1% hari valid: satu provinsi tanpa data sah.", act: "Pulihkan MER-01" },
+  { w: "Sumatra Barat & Riau", why: "Kototabang (latar bersih) ikut naik 89% saat musim asap.", act: "Titik antara di jalur sebaran asap" },
+];
 
 export default function Q5Jaringan() {
   const d = useData<[Score[], Prio[], Pairs, Anom, Summary[]]>("scorecard", "priority", "pairs", "anomaly", "station_summary");
@@ -38,8 +46,7 @@ export default function Q5Jaringan() {
   }, [d, sort, filt]);
 
   if (!d) return <div className="loading">Memuat rapor jaringan stasiun…</div>;
-  const [, prio, pairs, anom, summ] = d;
-  const avg = Object.fromEntries(summ.map((s) => [s.code, s.rata2_pm25]));
+  const [, prio, , anom] = d;
 
   const th = (k: SortKey, l: string, num = false) => (
     <th className={num ? "num" : ""} onClick={() => setSort({ k, asc: sort.k === k ? !sort.asc : num ? false : true })} aria-sort={sort.k === k ? (sort.asc ? "ascending" : "descending") : "none"}>
@@ -88,24 +95,34 @@ export default function Q5Jaringan() {
 
   return (
     <Page path="/jaringan"
+      headline={`${d[0].length - Number(kat("Andal"))} dari ${d[0].length} stasiun tidak bisa dipercaya penuh, dan Kalimantan paling buta`}
       kpis={<>
         <Kpi k="Stasiun andal" v={kat("Andal")} unit={`dari ${d[0].length}`} note="grade A–B, tanpa masalah" />
-        <Kpi k="Bermasalah, diakui metadata" v={kat("Diakui metadata")} unit="stasiun" note="status Defective / Intermittent" />
         <Kpi k="Bermasalah tersembunyi" v={kat("TERSEMBUNYI (status Active)")} unit="stasiun" note="status Active, data cacat" />
         <Kpi k="Jam sensor beku berlabel VALID" v={fmt(beku, 0)} unit="jam" note="Banjarbaru (BJB-01), ±10 bulan" />
       </>}
       main={
-        <Card title="Hari dengan data valid per stasiun" sub="Warna = temuan pemeriksaan data; huruf = grade. Klik batang untuk profil stasiun.">
-          <Chart option={covOpt} height={Math.max(420, cov.length * 21)} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} ariaLabel="Cakupan data valid per stasiun" />
+        <Card title="Di mana titik pantau baru paling dibutuhkan" sub="Urutan dari risiko polusi, pemburukan, keandalan data, dan stasiun kembar">
+          <ol className="prio">
+            {PRIO.map((r, k) => (
+              <li key={r.w}>
+                <span className="n">{k + 1}</span>
+                <div><b>{r.w}</b><p>{r.why}</p></div>
+                <span className="act">{r.act}</span>
+              </li>
+            ))}
+          </ol>
         </Card>
       }
       method="Grade: A ≥95% hari valid & imputasi <5% · B ≥90% · C ≥75% · D ≥25% · E <25%. 'Tersembunyi' = status Active tapi grade C–E atau ada sensor beku. Skor risiko = gabungan rata-rata, persentil 95, dan tren PM2.5. Anomali dari Isolation Forest per stasiun."
       supports={[
-        <Card key="a" title="Keandalan data dan risiko polusi" sub="Kotak merah = risiko tinggi, data lemah">
+        <Card key="a" title="Polusi tinggi, data lemah" sub="Kotak merah = prioritas: risiko tinggi tapi datanya tidak andal">
           <Chart option={prioOpt} height={260} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} />
         </Card>,
-        <Card key="b" title="Stasiun kembar dan berdempetan" sub={`KTG-01 ↔ KTG-02 r = 1,00 · JMB-01 ↔ JMB-02 berjarak ${fmt(pairs.jmb_jarak_km, 1)} km`}>
-          <StationMap values={avg} visible={filt} height={260} lines={pairs.garis_bukti.map((g) => ({ a: g.a, b: g.b, label: g.jenis }))} label="Rata-rata PM2.5" />
+      ]}
+      more={[
+        <Card key="v" title="Hari dengan data valid per stasiun" sub="Warna = temuan pemeriksaan data; huruf = grade. Klik batang untuk profil stasiun.">
+          <Chart option={covOpt} height={Math.max(420, cov.length * 21)} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} ariaLabel="Cakupan data valid per stasiun" />
         </Card>,
         <Card key="c" title="Hari anomali yang jatuh di musim asap" sub={`Garis = porsi Jul–Okt dalam setahun (34%). Gambut: ${fmt(anom["gambut_di_musim_asap_%"], 0)}%.`}>
           <Chart option={anOpt} height={260} />
@@ -113,7 +130,7 @@ export default function Q5Jaringan() {
       ]}
       extra={
         <details className="more">
-          <summary>Lihat rapor lengkap per stasiun</summary>
+          <summary>Rapor lengkap per stasiun</summary>
           <div style={{ marginTop: 8 }}>
         <Card title="Rapor kualitas data per stasiun" sub="Klik judul kolom untuk mengurutkan, klik baris untuk profil.">
           <div className="tbl-wrap">

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
-import { Card, Kpi, Page, Seg } from "../components/Layout";
+import { Card, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt, UG } from "../lib/format";
 import { useApp, usePick, useStationFilter } from "../lib/state";
@@ -73,33 +73,28 @@ export default function Q3Pemicu() {
     ],
   };
 
-  const dk = dec.skala["Skala asli (µg/m³)"];
-  const cuaca = ["Angin (kecepatan & arah)", "Kelembapan", "Suhu"].reduce((a, k) => a + (shap["kontribusi_%"][k] ?? 0), 0);
 
   return (
     <Page path="/pemicu"
-      kpis={<>
-        <Kpi k="Variasi dari musim & episode" v={`${fmt(dk["Musim/episode (stasiun-bulan)"], 0)}%`} note="dekomposisi varians, skala asli" />
-        <Kpi k="Variasi dari lokasi stasiun" v={`${fmt(dk["Lokasi (antar stasiun)"], 0)}%`} note={`naik ke ${fmt(dec.skala["Skala log"]["Lokasi (antar stasiun)"], 0)}% pada skala log`} />
-        <Kpi k="Korelasi lalu lintas – PM2.5" v={`ρ = ${fmt(tr.rho_pm25, 2)}`} note="di luar musim asap (Jan–Jun)" />
-        <Kpi k="Kontribusi cuaca harian" v={`${fmt(cuaca, 0)}%`} note="angin, kelembapan, suhu (SHAP)" />
-      </>}
+      headline="Musim menentukan, lalu lintas menambah di kota"
       main={
         <Card title="Sumber variasi PM2.5 harian"
-          sub="Dekomposisi varians: antar stasiun → antar bulan dalam stasiun → hari ke hari."
+          sub="Dari mana naik-turun PM2.5 berasal"
           right={<Seg value={skala} onChange={setSkala} options={[["Skala asli (µg/m³)", "Skala asli"], ["Skala log", "Skala log"]]} />}
-          note={skala === "Skala log" ? "Skala log menimbang perubahan relatif (×2, ×3), sehingga beda kota tercemar vs bersih lebih menonjol." : "Skala asli didominasi episode asap ratusan µg/m³."}>
+>
           <Chart option={decOpt} height={170} />
         </Card>
       }
       method={`Dekomposisi varians bertingkat: stasiun → bulan → hari. Kontribusi faktor dari LightGBM + SHAP pada simpangan log PM2.5 dari rata-rata stasiunnya sendiri; dilatih 2024–2025, diuji 2026 (R² ${fmt(shap.r2_uji_2026, 2)}). Lalu lintas dan jarak ke jalan saling terkait (ρ = ${fmt(tr.rho_lalu_lintas_jarak, 2)}), jadi dibaca sebagai satu faktor paparan jalan raya. Korelasi cuaca per jam: median |ρ| ≤ 0,12.`}
       supports={[
-        <Card key="a" title="Kontribusi faktor dalam satu stasiun" sub="% dari total kontribusi SHAP">
+        <Card key="a" title="Faktor di dalam satu stasiun" sub="% kontribusi (SHAP)">
           <Chart option={shapOpt} height={250} />
         </Card>,
-        <Card key="b" title="Lalu lintas dan PM2.5, Januari–Juni" sub="Satu titik = satu stasiun. Titik besar = dekat jalan; oranye = gambut.">
+        <Card key="b" title="Makin ramai jalan, makin kotor" sub="Jan–Jun · satu titik = satu stasiun · besar = dekat jalan">
           <Chart option={trOpt} height={250} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} />
         </Card>,
+      ]}
+      more={[
         <Card key="c" title="Arah angin dan PM2.5" sub={`${byCode[rs].nama} · selisih antar arah ${fmt(rose["rentang_pm25_%"][rs], 1)}%`}
           right={<div className="tabs">{Object.keys(rose.data).map((c) => <button key={c} aria-pressed={rs === c} onClick={() => setRs(c)}>{byCode[c].nama}</button>)}</div>}>
           <Chart option={roseOpt} height={250} />

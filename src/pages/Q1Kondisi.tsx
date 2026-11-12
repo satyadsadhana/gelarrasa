@@ -5,16 +5,13 @@ import { Card, Kpi, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt, fmtPct, UG } from "../lib/format";
 import { useApp, usePick, usePickSymbol, useStationFilter } from "../lib/state";
-import { C, GAMBUT_COL, MUTED, TIER, TIPE_COL } from "../lib/theme";
+import { C, GAMBUT_COL, MUTED, TIPE_COL } from "../lib/theme";
 import type { Summary } from "../lib/types";
 
 type Annual = { per_stasiun: { code: string; tahun: number; rata2: number; lengkap: boolean; lampaui_PP22: boolean }[]; tangga_who: Record<string, Record<string, number>>; urutan_tangga: string[] };
 type Trend = { kelompok: Record<string, Record<string, number>>; kelompok_musim: { gambut: string; musim: string; [y: string]: number | string }[] };
 type Iku = { data: { code: string; tahun: number; IKU: number; kategori_IKU: string; pm25: number }[]; buta_asap_2025: string[]; rho_2025: number };
 
-/** Tangga WHO: makin gelap = makin jauh dari target. */
-const TIER_COL = [TIER[5], TIER[4], TIER[3], TIER[2], TIER[1], TIER[0]];
-const TIER_ON = ["#fff", "#fff", "#fff", C.ink, C.ink, C.ink];
 
 export default function Q1Kondisi() {
   const d = useData<[Summary[], Annual, Trend, Iku]>("station_summary", "annual", "trend", "iku");
@@ -55,28 +52,7 @@ export default function Q1Kondisi() {
 
   if (!d || !quad) return <div className="loading">Memuat data kualitas udara…</div>;
   const [summ, ann, trend, iku] = d;
-  const yrs = ["2024", "2025"];
 
-  const ladder: EChartsOption = acuan === "who" ? {
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    legend: { bottom: 0, itemWidth: 10, textStyle: { fontSize: 10.5 } },
-    grid: { left: 8, right: 10, top: 6, bottom: 64 },
-    xAxis: { type: "value", max: 24, name: "stasiun" }, yAxis: { type: "category", data: yrs, inverse: true },
-    series: ann.urutan_tangga.map((t, i) => ({
-      name: t, type: "bar", stack: "a", itemStyle: { color: TIER_COL[i] },
-      label: { show: true, color: TIER_ON[i], fontWeight: 700, formatter: (p: any) => (p.value ? p.value : "") },
-      data: yrs.map((y) => ann.tangga_who[y][t] ?? 0),
-    })),
-  } : {
-    tooltip: { trigger: "axis", axisPointer: { type: "shadow" } },
-    legend: { bottom: 0 }, grid: { left: 8, right: 10, top: 6, bottom: 40 },
-    xAxis: { type: "value", max: 24 }, yAxis: { type: "category", data: yrs, inverse: true },
-    series: [true, false].map((lamp) => ({
-      name: lamp ? "Melampaui 15 µg/m³" : "Memenuhi", type: "bar", stack: "a", itemStyle: { color: lamp ? TIER[4] : TIER[1] },
-      label: { show: true, color: lamp ? "#fff" : C.ink, fontWeight: 700 }, barWidth: 26,
-      data: yrs.map((y) => ann.per_stasiun.filter((r) => String(r.tahun) === y && r.lengkap && r.lampaui_PP22 === lamp).length),
-    })),
-  };
 
   const groups = ["Gambut", "Non-gambut"];
   const trendOpt: EChartsOption = {
@@ -139,6 +115,7 @@ export default function Q1Kondisi() {
 
   return (
     <Page path="/kondisi"
+      headline={`${fmt(ann.per_stasiun.filter((r) => r.tahun === 2025 && r.lengkap && r.lampaui_PP22).length, 0)} dari ${rank.length} stasiun menghirup udara di atas baku mutu`}
       kpis={<>
         <Kpi k="Stasiun melampaui baku mutu tahunan" v={`${fmt(ann.per_stasiun.filter((r) => r.tahun === 2025 && r.lengkap && r.lampaui_PP22).length, 0)} dari ${rank.length}`} note={`2025 · batas 15 ${UG}`} />
         <Kpi k="Belum capai target WHO IT-1 (35)" v={`${ann.tangga_who["2024"][ann.urutan_tangga[0]]} → ${ann.tangga_who["2025"][ann.urutan_tangga[0]]}`} unit="stasiun" note="2024 → 2025" />
@@ -146,41 +123,34 @@ export default function Q1Kondisi() {
         <Kpi k={'IKU "Baik" padahal PM2.5 > 35'} v={fmt(blindN, 0)} unit="stasiun" note="IKU hanya dihitung dari NO₂ & SO₂" />
       </>}
       main={
-        <Card title={`Rata-rata PM2.5 per stasiun, 2025`} sub={`Oranye = kawasan gambut, abu = lainnya. ${above} dari ${rank.length} stasiun di kanan garis ${acuan === "who" ? "WHO IT-1" : "baku mutu"}. Ganti acuan di bar atas.`}>
+        <Card title={`Rata-rata PM2.5 per stasiun, 2025`} sub={`Oranye = kawasan gambut. ${above} dari ${rank.length} stasiun di kanan garis ${acuan === "who" ? "WHO IT-1" : "baku mutu"}.`}>
           <Chart option={rankOpt} height={Math.max(420, rank.length * 22)} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} ariaLabel="Peringkat rata-rata PM2.5 per stasiun" />
         </Card>
       }
       method="Rata-rata tahunan hanya sah bila ≥75% hari punya data. Tren memakai periode 1 Jan–14 Okt tiap tahun (BJB-01 & MER-01 dikeluarkan karena cakupan <75%). IKU dihitung ulang dari NO₂ & SO₂ sesuai Permen LHK 27/2021."
       supports={[
-        <Card key="q" title="Rata-rata dan lonjakan per stasiun" sub="Skala log. Warna = tipe pola waktu: oranye episodik (asap musiman), slate kronis.">
-          <Chart option={quad} height={340} onClick={(p: any) => p.data?.s && openProfil(p.data.s.code)} ariaLabel="Rata-rata vs persentil 95" />
-        </Card>,
-        <Card key="b" title="PM2.5 per kelompok kawasan, 1 Jan–14 Okt" sub="Persentase di ujung garis = perubahan 2024 → 2026"
+        <Card key="b" title="Gambut naik, kawasan lain datar" sub="PM2.5 per kelompok, 1 Jan–14 Okt; % = perubahan 2024 → 2026"
           right={<Seg value={musim} onChange={setMusim} options={[["semua", "Semua"], ["Jan–Jun", "Luar musim"], ["Jul–14 Okt", "Musim asap"]]} />}>
           <Chart option={trendOpt} height={300} />
         </Card>,
-        <Card key="a" title={acuan === "who" ? "Stasiun menurut target antara WHO" : "Stasiun terhadap baku mutu tahunan"}
-          sub={acuan === "who" ? "Makin gelap = makin jauh dari target 5 µg/m³" : "PP 22/2021 · 15 µg/m³ · stasiun dengan data ≥75% hari"}>
-          <Chart option={ladder} height={220} />
-        </Card>,
-        <Card key="c" title="IKU 2025 dibandingkan PM2.5" sub={`Titik slate = IKU "Baik" tetapi PM2.5 tahunan > 35 ${UG}`}>
-          <Chart option={ikuOpt} height={220} />
+        <Card key="c" title={`IKU "Baik", padahal PM2.5 tinggi`} sub={`Kotak abu = IKU "Baik" tetapi PM2.5 tahunan > 35 ${UG}`}>
+          <Chart option={ikuOpt} height={300} />
         </Card>,
       ]}
-      extra={
-        <details className="more">
-          <summary>Lihat perubahan per stasiun (1 Jan–14 Okt, 2024 → 2026)</summary>
-          <div className="card" style={{ marginTop: 8 }}>
-            <Chart height={560} option={{
-              tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v: any) => fmtPct(v, 1, true) },
-              grid: { left: 8, right: 30, top: 10, bottom: 20 },
-              xAxis: { type: "value", name: "%" },
-              yAxis: { type: "category", data: [...summ].filter((s) => s["ubah_%"] != null && !byCode[s.code].excl_tren).sort((a, b) => a["ubah_%"]! - b["ubah_%"]!).map((s) => byCode[s.code].nama) },
-              series: [{ type: "bar", data: [...summ].filter((s) => s["ubah_%"] != null && !byCode[s.code].excl_tren).sort((a, b) => a["ubah_%"]! - b["ubah_%"]!).map((s) => ({ value: s["ubah_%"], itemStyle: { color: byCode[s.code].gambut ? GAMBUT_COL.Gambut : GAMBUT_COL["Non-gambut"] } })) }],
-            }} />
-          </div>
-        </details>
-      }
+      more={[
+        <Card key="q" title="Rata-rata dan lonjakan per stasiun" sub="Skala log. Oranye = episodik (asap musiman), slate = kronis.">
+          <Chart option={quad} height={340} onClick={(p: any) => p.data?.s && openProfil(p.data.s.code)} ariaLabel="Rata-rata vs persentil 95" />
+        </Card>,
+        <Card key="t" title="Perubahan per stasiun" sub="1 Jan–14 Okt, 2024 → 2026">
+          <Chart height={340} option={{
+            tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v: any) => fmtPct(v, 1, true) },
+            grid: { left: 8, right: 30, top: 10, bottom: 20 },
+            xAxis: { type: "value", name: "%" },
+            yAxis: { type: "category", axisLabel: { fontSize: 10 }, data: [...summ].filter((s) => s["ubah_%"] != null && !byCode[s.code].excl_tren).sort((a, b) => a["ubah_%"]! - b["ubah_%"]!).map((s) => byCode[s.code].nama) },
+            series: [{ type: "bar", data: [...summ].filter((s) => s["ubah_%"] != null && !byCode[s.code].excl_tren).sort((a, b) => a["ubah_%"]! - b["ubah_%"]!).map((s) => ({ value: s["ubah_%"], itemStyle: { color: byCode[s.code].gambut ? GAMBUT_COL.Gambut : GAMBUT_COL["Non-gambut"] } })) }],
+          }} />
+        </Card>,
+      ]}
     />
   );
 }

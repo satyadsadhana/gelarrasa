@@ -81,20 +81,23 @@ export default function Q2Waktu() {
         <Kpi k="Episode terpanjang" v={`${longest.hari} hari`} note={`${byCode[longest.code].nama}, ${fmtDate(longest.mulai)} – ${fmtDate(longest.selesai)}`} />
         <Kpi k="Musim risiko dimulai" v={`minggu ke-${Math.min(...Object.values(cal.minggu_awal))}`} note={`akhir Juli · ${Object.entries(cal.minggu_awal).map(([y, w]) => `${y}: mg ${w}`).join(" · ")}`} />
       </>}
-      main={<TimeSeries daily={daily} />}
+      headline={`Musim asap datang tiap akhir Juli, dan tiap tahun makin pekat`}
+      main={
+        <Card title="Rata-rata bulanan kawasan gambut" sub="Tiga tahun ditumpuk; angka = puncak tiap tahun">
+          <Chart option={seasonal} height={320} />
+        </Card>
+      }
       method="Titik harian sah bila ≥18 jam valid; mingguan bila ≥4 hari valid; bulanan bila ≥15 hari valid. Garis putus = data tidak valid. Episode asap berat = ≥3 hari berturut-turut PM2.5 harian > 150,4 µg/m³; angka di atas hanya stasiun kawasan gambut (Samarinda, kawasan industri, dihitung terpisah). Selisih hari kerja dan akhir pekan: median 0,03%."
       supports={[
-        <Card key="a" title="Rata-rata bulanan kawasan gambut" sub="Tiga tahun ditumpuk; angka = puncak tiap tahun">
-          <Chart option={seasonal} height={260} />
-        </Card>,
-        <Card key="b" title="Hari tidak sehat di kawasan gambut per minggu" sub={`% hari-stasiun gambut dengan PM2.5 > 55,4 ${UG}`}>
+        <Card key="b" title="Minggu tidak sehat di kawasan gambut" sub={`% hari-stasiun gambut dengan PM2.5 > 55,4 ${UG}`}>
           <Chart option={calOpt} height={260} />
         </Card>,
-        <Card key="c" title="Pola jam" sub="Relatif terhadap rata-rata harian (1 = rata-rata)"
+        <Card key="c" title="Kota punya jam sibuk, asap tidak" sub="Relatif terhadap rata-rata harian (1 = rata-rata)"
           right={<Seg value={pol} onChange={setPol} options={[["pm25", "PM2.5"], ["gas", "O₃ & NO₂"]]} />}>
           <Chart option={diuOpt} height={260} />
         </Card>,
       ]}
+      more={[<div key="ts" style={{ gridColumn: "1 / -1" }}><TimeSeries daily={daily} /></div>]}
     />
   );
 }

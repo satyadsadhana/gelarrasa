@@ -133,25 +133,30 @@ export default function Q4Dampak() {
 
   return (
     <Page path="/dampak"
+      headline={`Saat udara Berbahaya, kematian di rumah sakit ${fmt(dose.gabungan["Kematian"][4], 1)}× hari biasa`}
       kpis={<>
         <Kpi k="ISPA balita, tiap PM2.5 berlipat dua" v={fmtPct((rB.rr - 1) * 100, 0, true)} note={`CI 95% ${fmtPct((rB.lo - 1) * 100, 0, true)} s.d. ${fmtPct((rB.hi - 1) * 100, 0, true)}`} />
         <Kpi k="Kematian, tiap PM2.5 berlipat dua" v={fmtPct((rK.rr - 1) * 100, 0, true)} note={`CI 95% ${fmtPct((rK.lo - 1) * 100, 0, true)} s.d. ${fmtPct((rK.hi - 1) * 100, 0, true)}`} />
         <Kpi k="Kematian pada hari Berbahaya" v={`${fmt(dose.gabungan["Kematian"][4], 1)}×`} note={`hari biasa · PM2.5 > 250 ${UG}`} />
-        <Kpi k="Jeda paparan → kasus" v="Hari yang sama" note="jeda 1–3 hari & plasebo tidak bermakna" />
       </>}
       main={
-        <Card title="PM2.5 dan kasus rumah sakit per minggu" sub="Atas: PM2.5 stasiun. Bawah: kasus di RS pasangannya, dibagi rata-rata RS itu (1 = minggu biasa). Ganti stasiun di bar atas; gulir di grafik untuk memperbesar."
-          right={<select value={tsOut} onChange={(e) => setTsOut(e.target.value)} aria-label="Pilih jenis kasus" className="pick-select">{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
-          {wk.rows.length ? <Chart option={tsOpt} height={440} ariaLabel="PM2.5 dan kasus rumah sakit mingguan" />
-            : <p className="note">Stasiun pilihan belum punya RS pasangan dengan data PM2.5 yang layak. Pilih stasiun lain di bar atas, misalnya {PICK_GLYPH[0]} Palangka Raya.</p>}
+        <Card title="Makin kotor udaranya, makin banyak pasien" sub="Kasus relatif per kategori ISPU (1 = hari biasa di RS itu)"
+          right={<select value={out} onChange={(e) => setOut(e.target.value)} aria-label="Pilih penyakit" className="pick-select">{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
+          <Chart option={doseOpt} height={300} ariaLabel="Dosis-respons per kategori ISPU" />
         </Card>
       }
       method="Model dua tahap: quasi-Poisson per RS (log₂ PM2.5 hari yang sama + spline waktu 12 df + suhu + hari), digabung meta-analisis random effects. Stabil di 8 uji sensitivitas. Data sintetis: dibaca sebagai asosiasi, bukan bukti sebab-akibat."
       supports={[
-        <Card key="d" title="Kasus relatif menurut kategori ISPU" sub="1 = hari biasa di RS itu. Simbol berwarna = RS pasangan stasiun pilihan."
-          right={<select value={out} onChange={(e) => setOut(e.target.value)} aria-label="Pilih penyakit" className="pick-select">{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
-          <Chart option={doseOpt} height={300} ariaLabel="Dosis-respons per kategori ISPU" />
+        <Card key="w" title="Asap naik, pasien ikut naik" sub="Atas: PM2.5. Bawah: kasus RS pasangan (1 = minggu biasa)."
+          right={<select value={tsOut} onChange={(e) => setTsOut(e.target.value)} aria-label="Pilih jenis kasus" className="pick-select">{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
+          {wk.rows.length ? <Chart option={tsOpt} height={340} ariaLabel="PM2.5 dan kasus rumah sakit mingguan" />
+            : <p className="note">Stasiun pilihan belum punya RS pasangan dengan data PM2.5 yang layak. Pilih stasiun lain di bar atas, misalnya {PICK_GLYPH[0]} Palangka Raya.</p>}
         </Card>,
+        <Card key="c" title="Balita dan lansia sama rentan" sub={`RR ${fmt(age.rr_balita, 2)} vs ${fmt(age.rr_lansia, 2)} (p = ${fmt(age.p_beda, 2)})`}>
+          <Chart option={ageOpt} height={200} />
+        </Card>,
+      ]}
+      more={[
         <Card key="a" title="Kenaikan risiko tiap PM2.5 berlipat dua" sub="Batang = perkiraan, garis = CI 95%">
           <div style={{ display: "grid", gap: 7, marginTop: 6 }}>
             {OUT.map((o) => {
@@ -177,14 +182,7 @@ export default function Q4Dampak() {
           <div className="tabs" style={{ marginBottom: 4 }}>{["ISPA balita", "Rawat napas umum", "Kematian"].map((o) => <button key={o} aria-pressed={lagOut === o} onClick={() => setLagOut(o)}>{o}</button>)}</div>
           <Chart option={lagOpt} height={210} />
         </Card>,
-        <Card key="c" title="Balita dan lansia" sub={`RR ${fmt(age.rr_balita, 2)} vs ${fmt(age.rr_lansia, 2)} (p = ${fmt(age.p_beda, 2)})`}>
-          <Chart option={ageOpt} height={200} />
-        </Card>,
-      ]}
-      extra={
-        <details className="more">
-          <summary>Beban kronis antar RS (analisis ekologis, ρ = {fmt(eco.rho, 2)})</summary>
-          <div className="card" style={{ marginTop: 8 }}>
+        <Card key="e" title={`Beban kronis antar RS (ekologis, ρ = ${fmt(eco.rho, 2)})`}>
             <Chart height={320} option={{
               tooltip: { formatter: (p: any) => `<b>${byCode[p.data.code]?.nama}</b><br/>PM2.5 ${fmt(p.value[0])} ${UG}<br/>${fmt(p.value[1], 2)} kasus napas/hari per 100 TT` },
               grid: { left: 8, right: 14, top: 14, bottom: 30 },
@@ -193,9 +191,8 @@ export default function Q4Dampak() {
                 data: ecoV.map((r) => ({ value: [r.pm25, r.resp_per100], code: r.code })) }],
             }} />
             <p className="note">RS Tipe A & RS-24–27 dikeluarkan. Ini perbandingan antar wilayah, bukan efek harian.</p>
-          </div>
-        </details>
-      }
+          </Card>,
+      ]}
     />
   );
 }

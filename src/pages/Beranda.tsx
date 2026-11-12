@@ -3,23 +3,16 @@ import { Link } from "react-router-dom";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
 import StationMap from "../components/StationMap";
-import { PAGES } from "../components/Layout";
+import Stage3D from "../components/Stage3D";
 import { useTour } from "../components/Tour";
 import { useData } from "../lib/data";
-import { BULAN, fmt, fmtDate, UG } from "../lib/format";
+import { fmt, fmtDate, UG } from "../lib/format";
 import { dayMask, PERIODE, useApp, useStationFilter } from "../lib/state";
-import { C, ISPU_COL, ISPU_LAB, ISPU_ON, ispuCat } from "../lib/theme";
+import { ISPU_COL, ISPU_LAB, ISPU_ON, ispuCat } from "../lib/theme";
 import type { Daily, Weekly } from "../lib/types";
 
-type Monthly = { bulan: string[]; gambut: (number | null)[]; non_gambut: (number | null)[] };
-
-const COVER = [
-  ["27", "stasiun pemantau (AQMS)"], ["21", "provinsi di 5 pulau"], ["27", "rumah sakit pasangan (25 masuk model dampak)"],
-  ["1.018", "hari, 1 Jan 2024 – 14 Okt 2026"], ["6", "polutan + 4 variabel cuaca"], ["7", "jenis kasus kesehatan harian"],
-];
-
 export default function Beranda() {
-  const d = useData<[Weekly, Daily, Monthly]>("weekly_station", "daily", "monthly");
+  const d = useData<[Weekly, Daily]>("weekly_station", "daily");
   const { periode, byCode, openProfil, pulau, kawasan } = useApp();
   const filt = useStationFilter();
   const tour = useTour();
@@ -95,32 +88,29 @@ export default function Beranda() {
     })),
   };
 
-  const mon = d[2];
-  const monLbl = mon.bulan.map((b) => `${BULAN[Number(b.slice(5, 7)) - 1]} ${b.slice(2, 4)}`);
-  const monOpt: EChartsOption = {
-    tooltip: { trigger: "axis", valueFormatter: (v: any) => (v == null ? "–" : `${fmt(v)} ${UG}`) },
-    legend: { top: 0, data: ["Kawasan gambut", "Kawasan lain"] },
-    grid: { left: 8, right: 20, top: 30, bottom: 24 },
-    xAxis: { type: "category", data: monLbl, axisLabel: { fontSize: 10.5, interval: 2 } },
-    yAxis: { type: "value", name: UG },
-    series: [
-      { name: "Kawasan gambut", type: "line", symbol: "none", data: mon.gambut, lineStyle: { width: 2.5 }, itemStyle: { color: C.gambut }, areaStyle: { color: C.gambut, opacity: 0.08 },
-        markPoint: { symbol: "circle", symbolSize: 7, label: { show: true, position: "left", formatter: (q: any) => `${fmt(q.value, 0)}`, color: C.ink, fontSize: 11, fontWeight: 600 }, data: [{ type: "max" }] } as any },
-      { name: "Kawasan lain", type: "line", symbol: "none", data: mon.non_gambut, lineStyle: { width: 2 }, itemStyle: { color: C.other } },
-      { name: "Baku mutu harian", type: "line", data: [], markLine: { silent: true, symbol: "none", lineStyle: { color: C.ink, type: "dashed" }, label: { formatter: "55 · baku mutu harian", position: "insideEndTop", color: C.ink, fontSize: 10.5 }, data: [{ yAxis: 55 }] } } as any,
-    ],
-  };
-
   return (
     <main>
-      <section className="hero">
-        <h1>Kualitas Udara & Kesehatan di 27 Wilayah Indonesia</h1>
-        <p>Data pemantauan udara per jam dan kasus rumah sakit harian, 1 Januari 2024 – 14 Oktober 2026. Pilih periode, pulau, atau kawasan di bar atas; angka ringkasan, peta, dan sebaran ISPU ikut berubah.</p>
+      <section className="hero3d" data-tour="map-card">
+        <Stage3D values={values} visible={filt} height="100%" autoRotate
+          fallback={<StationMap values={values} visible={filt} label={`PM2.5 ${label}`} height={520} />} />
+        <div className="hero3d-text">
+          <span className="kicker">27 stasiun · 27 rumah sakit · 2024–2026</span>
+          <h1>Udara yang kita hirup</h1>
+          <p>Tiap tiang adalah satu stasiun. Makin tinggi, makin pekat PM2.5 yang terhirup. Putar waktunya dan lihat asap datang dari Kalimantan dan Sumatra.</p>
+          <button className="hero-tour" onClick={() => tour.start()}>▶ Mulai tur 3 menit</button>
+        </div>
+        <div className="player hero3d-player">
+          <button onClick={() => { if (!play && (pos == null || pos >= range.length - 1)) setPos(0); setPlay(!play); }}>{play ? "❚❚ Jeda" : "▶ Putar waktu"}</button>
+          <input type="range" min={0} max={Math.max(0, range.length - 1)} value={pos ?? 0} aria-label="Pilih minggu"
+            onChange={(e) => { setPlay(false); setPos(Number(e.target.value)); }} />
+          <span className="when">{pos == null ? `Rata-rata ${PERIODE[periode].label}` : `Minggu ${fmtDate(weeks[range[pos]])}`}</span>
+          {pos != null && <button onClick={() => { setPlay(false); setPos(null); }}>Rata-rata</button>}
+        </div>
       </section>
       <div className="kpis row">
         <div className="kpi"><span className="k">Rata-rata PM2.5</span><div className="v">{fmt(stats.mean)} <small>{UG}</small></div><p>baku mutu tahunan nasional 15 · WHO 5</p></div>
-        <div className="kpi"><span className="k">Hari melampaui baku mutu harian</span><div className="v">{fmt(stats.pct55, 1)}<small>%</small></div><p>dari {fmt(stats.n, 0)} hari-stasiun (PM2.5 &gt; 55 {UG})</p></div>
-        <div className="kpi"><span className="k">Hari Sangat Tidak Sehat atau lebih</span><div className="v">{fmt(stats.over150, 0)} <small>hari-stasiun</small></div><p>PM2.5 harian &gt; 150 {UG}</p></div>
+        <div className="kpi"><span className="k">Hari udara melewati baku mutu</span><div className="v">1 dari {fmt(100 / Math.max(stats.pct55 ?? 0, 0.1), 0)} <small>hari</small></div><p>{fmt(stats.pct55, 1)}% hari, PM2.5 &gt; 55 {UG}</p></div>
+        <div className="kpi"><span className="k">Hari Sangat Tidak Sehat</span><div className="v">{fmt(stats.over150, 0)} <small>hari</small></div><p>dijumlah dari semua stasiun · PM2.5 &gt; 150 {UG}</p></div>
         <div className="kpi">
           <span className="k">Rata-rata tertinggi · terendah</span>
           <div className="v sm">
@@ -130,51 +120,15 @@ export default function Beranda() {
           <p>terendah: {stats.low ? <button className="link-btn" onClick={() => openProfil(stats.low.code)}>{byCode[stats.low.code].nama}</button> : "–"} ({fmt(stats.low?.mean)} {UG})</p>
         </div>
       </div>
-      <div className="home">
-        <section className="card" data-tour="map-card">
-          <div className="card-head">
-            <div>
-              <h2>Peta stasiun · PM2.5 {label}</h2>
-              <p className="sub">Ukuran & warna titik = PM2.5 (kategori ISPU). Tekan ▶ untuk memutar per minggu. Klik titik untuk profil stasiun.</p>
-            </div>
-          </div>
-          <StationMap values={values} visible={filt} label={`PM2.5 ${label}`} height={420} />
-          <div className="player">
-            <button onClick={() => { if (!play && (pos == null || pos >= range.length - 1)) setPos(0); setPlay(!play); }}>{play ? "❚❚ Jeda" : "▶ Putar"}</button>
-            <input type="range" min={0} max={Math.max(0, range.length - 1)} value={pos ?? 0} aria-label="Pilih minggu"
-              onChange={(e) => { setPlay(false); setPos(Number(e.target.value)); }} />
-            <span style={{ minWidth: 140 }}>{pos == null ? "Rata-rata periode" : fmtDate(weeks[range[pos]])}</span>
-            {pos != null && <button onClick={() => { setPlay(false); setPos(null); }}>Rata-rata</button>}
-          </div>
-        </section>
-        <aside className="kpis">
-          <section className="card">
-            <h2>Sebaran kategori ISPU harian</h2>
-            <p className="sub">{scope} · {stats.stations} stasiun</p>
-            <div style={{ marginTop: 10 }}><Chart option={catOpt} height={30} /></div>
-            <div className="legend" style={{ marginTop: 8 }}>{ISPU_LAB.map((l, i) => <span key={l}><i style={{ background: ISPU_COL[i] }} />{l}</span>)}</div>
-          </section>
-          <section className="card">
-            <h2>Cakupan data</h2>
-            <p className="sub">Seluruh dataset; tidak ikut filter.</p>
-            <dl className="cover">{COVER.map(([v, l]) => <div key={l}><dt>{v}</dt><dd>{l}</dd></div>)}</dl>
-            <div className="cta" style={{ marginTop: 12 }}>
-              <button className="btn primary" onClick={() => tour.start()}>▶ Tur 3 menit</button>
-              <Link to="/tentang" className="btn ghost">Tentang data</Link>
-            </div>
-          </section>
-        </aside>
-      </div>
-      <section className="card" style={{ marginTop: "var(--gap)" }}>
-        <div className="card-head"><div><h2>Rata-rata PM2.5 bulanan, 2024–2026</h2><p className="sub">Semua stasiun kawasan gambut dibandingkan stasiun lain. Oktober 2026 sampai tanggal 14.</p></div></div>
-        <Chart option={monOpt} height={260} ariaLabel="Rata-rata PM2.5 bulanan gambut dan kawasan lain" />
+      <section className="card ispu-strip">
+        <div className="card-head"><div><h2>Berapa hari udaranya sehat?</h2><p className="sub">{scope} · {stats.stations} stasiun · persen hari menurut kategori ISPU</p></div></div>
+        <Chart option={catOpt} height={34} />
+        <div className="legend" style={{ marginTop: 8 }}>{ISPU_LAB.map((l, i) => <span key={l}><i style={{ background: ISPU_COL[i] }} />{l}</span>)}</div>
       </section>
-      <h2 className="section-title">Isi halaman lain</h2>
-      <ul className="explore">
-        {PAGES.slice(1).map((p) => (
-          <li key={p.path}><Link to={p.path}>{p.short}</Link><span>{p.desc}</span></li>
-        ))}
-      </ul>
+      <nav className="pager">
+        <span />
+        <Link to="/kondisi">Mulai: <b>Seberapa kotor udaranya?</b> →</Link>
+      </nav>
     </main>
   );
 }

@@ -127,6 +127,15 @@ PALETTES.malam = {
     sideActiveBg: "#f3f5f8", sideActiveTx: "#121a28", sideHover: "rgba(255,255,255,0.08)", sideStrong: "#ffffff", sideEdge: "transparent" },
 };
 
+/** "Nusantara" (12 Nov, v3): kerangka biru-laut dalam serumpun panggung 3D, latar putih kebiruan, aksen toska.
+ *  Toska hanya untuk kerangka (tombol, tautan, sorotan), tidak dipakai warna data. */
+PALETTES.nusantara = {
+  ...DATA_LIGHT,
+  ui: { side: "#0b1d2a", sideTx: "#cfdde3", sideSub: "#8aa1ad", bg: "#eef3f4", surface2: "#e4ecee", ink: "#0d1a22", inkSoft: "#4d5f69", line: "#d7e1e4", accent: "#0b5563", accent2: "#0f7a86", mapLand: "#e0e9eb",
+    card: "#FFFFFF", hi: "#2ec4b6", onHi: "#062026", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", radius: "10px",
+    sideActiveBg: "#2ec4b6", sideActiveTx: "#062026", sideHover: "rgba(255,255,255,0.08)", sideStrong: "#ffffff", sideEdge: "transparent" },
+};
+
 function readKey() {
   if (typeof location === "undefined") return "";
   const q = new URLSearchParams(location.search).get("palet");
@@ -136,7 +145,7 @@ function readKey() {
   } catch { return q ?? ""; }
 }
 const _key = readKey();
-export const PAL_KEY = _key in PALETTES ? _key : "klinis";
+export const PAL_KEY = _key in PALETTES ? _key : "nusantara";
 const PAL = PALETTES[PAL_KEY];
 export const UI = PAL.ui;
 

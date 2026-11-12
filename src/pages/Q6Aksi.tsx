@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { Link } from "react-router-dom";
 import Chart from "../components/Chart";
-import { Card, Kpi, Page, Seg } from "../components/Layout";
+import { Card, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt, fmtDate, fmtPct, UG } from "../lib/format";
 import { apply, simulate, type Skenario } from "../lib/sim";
@@ -21,12 +21,12 @@ const PRESET = [{ v: 15, l: "15 · WHO harian" }, { v: 55, l: "55 · baku mutu" 
 
 const RECS = [
   { who: "Dinkes & BPBD wilayah gambut", what: "Siaga RS musim asap", when: "Mulai akhir Juli (minggu ke-31); penuh saat PM2.5 > 150", ev: "/waktu", evl: "Kalender risiko", gain: "Palangka Raya 2026, batas 55: −1.050 ISPA balita, −510 kematian" },
-  { who: "KLHK & Pemda", what: "Cegah karhutla sebelum kemarau", when: "Juni–Juli, sebelum pita asap muncul", ev: "/pemicu", evl: "82% variasi dari musim", gain: "Tuas terbesar untuk lonjakan (episode berat 2026: 198 hari)" },
+  { who: "KLHK & Pemda", what: "Cegah karhutla sebelum kemarau", when: "Juni–Juli, sebelum pita asap muncul", ev: "/pemicu", evl: "82% variasi dari musim", gain: "Tuas terbesar untuk lonjakan (2026: 160 hari asap berat di kawasan gambut)" },
   { who: "Pemprov DKI & kota padat", what: "Kendalikan emisi jam sibuk", when: "06–09 & 17–19 setiap hari", ev: "/pemicu", evl: "Lalu lintas ρ = 0,78", gain: "Marunda −30% PM2.5: −711 ISPA balita, −197 kematian/tahun" },
   { who: "KLHK", what: "Tambahkan PM2.5 ke IKU", when: "Revisi Permen LHK 27/2021", ev: "/kondisi", evl: "IKU 'buta asap'", gain: "12 stasiun ber-IKU 'Baik' padahal gagal target WHO IT-1" },
   { who: "Dinkes & Puskesmas", what: "Lindungi balita dan lansia", when: "Hari ISPU ≥ Tidak Sehat (PM2.5 > 55)", ev: "/dampak", evl: "Balita vs lansia", gain: "Risiko sama (+56% vs +51%); 411 ribu kasus ISPA tercatat" },
   { who: "Pengelola jaringan AQMS", what: "Perbaiki & audit sensor", when: "Segera: JMB-02, MER-01, BJB-01, SM2-01", ev: "/jaringan", evl: "Rapor data", gain: "QC berbasis nilai menangkap 7.329 jam data beku berlabel VALID" },
-  { who: "KLHK", what: "Relokasi unit redundan", when: "Siklus anggaran berikutnya", ev: "/jaringan", evl: "Garis bukti", gain: "JMB-02 & satu unit KTG → koridor gambut yang belum terpantau" },
+  { who: "KLHK", what: "Audit unit kembar, lalu pertimbangkan pindah", when: "Siklus anggaran berikutnya", ev: "/jaringan", evl: "Garis bukti", gain: "KTG-01 & KTG-02 nyaris identik (selisih level 0,1%, jarak 112 km): kandidat pindah ke koridor gambut yang belum terpantau, setelah verifikasi lapangan" },
 ];
 
 export default function Q6Aksi() {
@@ -49,7 +49,8 @@ export default function Q6Aksi() {
   }, [d, rs, per, jenis, batas, kurangi]);
 
   if (!d || !res) return <div className="loading">Memuat data simulasi…</div>;
-  const [h] = d;
+  const [h, , ak] = d;
+  const beban = ak.beban_2025_batas55["ISPA balita"];
   const rsCode = rs === "all" ? null : h.rs[rs].code;
   const rsName = rsCode ? `${byCode[rsCode].rs_nama} (${byCode[rsCode].nama})` : "Semua 25 RS";
 
@@ -78,15 +79,10 @@ export default function Q6Aksi() {
   }
 
   return (
-    <Page path="/aksi"
-      kpis={<>
-        {["ISPA balita", "ISPA lansia", "Rawat napas umum", "Kematian"].map((o) => {
-          const r = res.find((x) => x.outcome === o);
-          return <Kpi key={o} k={`${o} yang bisa dicegah`} v={r ? fmt(Math.max(0, -r.selisih), 0) : "–"} unit="kasus" note={r ? `${fmtPct(r.persen, 1, true)} · ${rsCode ? byCode[rsCode].nama : "25 RS"} · ${PER[per].label}` : ""} />;
-        })}
-      </>}
+    <Page path="/aksi" stageCap={jenis === "batas" ? batas : null}
+      headline={beban ? `Batas harian 55 µg/m³ di 2025 berarti ${fmt(-beban.kasus, 0)} kasus ISPA balita lebih sedikit di 25 RS` : "Simulasi & Rekomendasi"}
       main={
-        <Card title="Simulator kebijakan" sub={`${rsName} · ${PER[per].label}. Angka di atas ikut berubah saat batas digeser.`}>
+        <Card title="Coba sendiri: geser batasnya" sub={`${rsName} · ${PER[per].label} · tiang 3D di atas ikut terpotong`}>
           <div className="sim">
             <div className="sim-ctrl">
               <label>Rumah sakit / wilayah
@@ -138,21 +134,26 @@ export default function Q6Aksi() {
       }
       method="kasus skenario = kasus aktual × (PM skenario / PM aktual)^(b/ln 2), b per RS (empirical Bayes shrinkage). Kardiovaskular & kematian memakai model ambang 150 µg/m³. Dihitung langsung di browser dari data harian."
       extra={
-        <section style={{ marginTop: 18 }}>
-          <h2 className="section-title" style={{ marginTop: 6 }}>Rekomendasi</h2>
-          <div className="recs">
+        <section className="recs-wrap">
+          <h2 className="section-title">Tujuh langkah yang disarankan</h2>
+          <ol className="recs-list">
             {RECS.map((r, i) => (
-              <article key={i} className="card rec">
-                <div className="who">{i + 1}. {r.who}</div>
-                <h3 style={{ marginTop: 4 }}>{r.what}</h3>
-                <dl>
-                  <dt>Kapan</dt><dd>{r.when}</dd>
-                  <dt>Bukti</dt><dd><Link to={r.ev}>{r.evl} →</Link></dd>
-                  <dt>Manfaat</dt><dd><b>{r.gain}</b></dd>
-                </dl>
-              </article>
+              <li key={i}>
+                <details>
+                  <summary>
+                    <span className="n">{i + 1}</span>
+                    <b>{r.what}</b>
+                    <span className="who">{r.who}</span>
+                  </summary>
+                  <div className="rec-body">
+                    <p><span>Kapan</span>{r.when}</p>
+                    <p><span>Manfaat</span><b>{r.gain}</b></p>
+                    <Link to={r.ev}>Lihat buktinya: {r.evl} →</Link>
+                  </div>
+                </details>
+              </li>
             ))}
-          </div>
+          </ol>
         </section>
       }
     />

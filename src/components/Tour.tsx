@@ -20,7 +20,7 @@ const STEPS: Step[] = [
     try: "Pilih jenis kasus lain di kanan atas grafik, misalnya Kematian." },
   { path: "/jaringan", targets: ["drawer"], profil: "BJB-01", head: "Sensor Banjarbaru beku 7.329 jam, tetapi tetap berlabel VALID",
     try: "Klik batang stasiun mana pun di grafik untuk membuka profil seperti ini." },
-  { path: "/aksi", targets: ["kpis", "main"], head: "Untuk 25 RS, batas harian 55 µg/m³ berarti ±6.000 kasus ISPA balita lebih sedikit di 2025",
+  { path: "/aksi", targets: ["main"], head: "Untuk 25 RS, batas harian 55 µg/m³ berarti ±6.000 kasus ISPA balita lebih sedikit di 2025",
     try: "Pilih \"Semua 25 RS\" atau satu rumah sakit, lalu geser batasnya; angka di atas ikut berubah." },
 ];
 const KEY = "nn-tour-seen";
