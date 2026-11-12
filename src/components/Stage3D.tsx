@@ -30,8 +30,16 @@ export const VIEWS: Record<string, MapViewState> = {
 let geoCache: Promise<unknown> | null = null;
 const loadGeo = () => (geoCache ??= fetch("/data/indonesia.geojson").then((r) => (r.ok ? r.json() : null)).catch(() => null));
 
+/** Cek dukungan WebGL SEKALI saja; konteks uji langsung dilepas supaya tidak memakan jatah konteks browser. */
+let _webgl: boolean | null = null;
 function webglOk() {
-  try { return !!document.createElement("canvas").getContext("webgl2"); } catch { return false; }
+  if (_webgl != null) return _webgl;
+  try {
+    const gl = document.createElement("canvas").getContext("webgl2");
+    _webgl = !!gl;
+    gl?.getExtension("WEBGL_lose_context")?.loseContext();
+  } catch { _webgl = false; }
+  return _webgl;
 }
 const reduced = () => typeof matchMedia !== "undefined" && matchMedia("(prefers-reduced-motion: reduce)").matches;
 
@@ -69,6 +77,19 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
   const [grow, setGrow] = useState(reduced() ? 1 : 0);
   const [pulse, setPulse] = useState(0);
   const interacting = useRef(false);
+  // Lepas konteks WebGL saat peta benar-benar dicopot (pindah halaman / tutup tur). Tanpa ini konteks lama
+  // menumpuk, browser mematikan yang tertua (kotak abu-abu) lalu membuat ulang peta (terasa jeda).
+  const box = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = box.current;
+    return () => {
+      const canvases = el ? [...el.querySelectorAll("canvas")] : [];
+      setTimeout(() => {
+        if (el?.isConnected) return; // StrictMode (mode pengembangan) hanya pura-pura mencopot
+        canvases.forEach((c) => { try { (c.getContext("webgl2") as WebGL2RenderingContext | null)?.getExtension("WEBGL_lose_context")?.loseContext(); } catch { /* abaikan */ } });
+      }, 0);
+    };
+  }, []);
 
   useEffect(() => { loadGeo().then(setGeo); }, []);
   // kamera terbang ke sudut halaman (juga saat pertama tampil)
@@ -162,7 +183,7 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
   };
 
   return (
-    <div className="stage3d" style={{ height }}>
+    <div className="stage3d" style={{ height }} ref={box}>
       <DeckGL
         viewState={vs}
         onViewStateChange={({ viewState, interactionState }) => {

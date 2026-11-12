@@ -14,6 +14,7 @@ export type PeriodeKey = keyof typeof PERIODE;
 export const PULAU = ["Sumatera", "Jawa", "Kalimantan", "Sulawesi", "Papua"];
 export const KAWASAN = ["Gambut", "Industri", "Roadside", "Urban", "Pesisir", "Latar Bersih"];
 export const DEFAULT_PILIHAN = ["JKT-02", "KTG-01", "KTB-01"];
+const PICK_KEY = "nn-pilihan";
 
 /** Halaman mana yang memakai filter apa (sisanya dinonaktifkan + tooltip). */
 export type FilterKey = "periode" | "pulau" | "kawasan" | "acuan";
@@ -32,10 +33,21 @@ export function StateProvider({ stations, children }: { stations: Station[]; chi
   const [sp, setSp] = useSearchParams();
   const [profil, setProfil] = useState<string | null>(null);
   const byCode = useMemo(() => Object.fromEntries(stations.map((s) => [s.code, s])), [stations]);
+  // Stasiun pilihan disimpan juga di luar URL, supaya tidak kembali ke pilihan awal
+  // saat pengguna pindah halaman lewat menu (tautan menu tidak membawa query string).
+  const [savedPick, setSavedPick] = useState<string | null>(() => {
+    const q = new URLSearchParams(typeof location !== "undefined" ? location.search : "").get("pilih");
+    if (q != null) { try { localStorage.setItem(PICK_KEY, q); } catch { /* storage diblokir */ } return q; }
+    try { return localStorage.getItem(PICK_KEY); } catch { return null; }
+  });
   const set = useCallback((k: string, v: string | null) => {
+    if (k === "pilih") {
+      setSavedPick(v);
+      try { if (v == null) localStorage.removeItem(PICK_KEY); else localStorage.setItem(PICK_KEY, v); } catch { /* storage diblokir */ }
+    }
     setSp((p) => { const n = new URLSearchParams(p); if (v == null || v === "") n.delete(k); else n.set(k, v); return n; }, { replace: true });
   }, [setSp]);
-  const raw = sp.get("pilih");
+  const raw = sp.get("pilih") ?? savedPick;
   const pilihan = raw == null ? DEFAULT_PILIHAN : raw.split(",").filter((c) => byCode[c]).slice(0, 3);
   const setPilihan = useCallback((codes: string[]) => set("pilih", codes.slice(0, 3).join(",")), [set]);
   const togglePilihan = useCallback((code: string) => {
