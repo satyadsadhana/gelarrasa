@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
 import { Card, Kpi, Page } from "../components/Layout";
+import { DotsViz } from "../components/Viz";
 import { useData } from "../lib/data";
 import { fmt } from "../lib/format";
 import { useApp, usePick, useStationFilter } from "../lib/state";
@@ -95,14 +96,14 @@ export default function Q5Jaringan() {
 
   return (
     <Page path="/jaringan"
-      headline={`${d[0].length - Number(kat("Andal"))} dari ${d[0].length} stasiun tidak bisa dipercaya penuh, dan Kalimantan paling buta`}
+      headline={`${d[0].length - Number(kat("Andal"))} dari ${d[0].length} Stasiun Tidak Bisa Dipercaya Penuh, dan Kalimantan Paling Buta`}
       kpis={<>
-        <Kpi k="Stasiun andal" v={kat("Andal")} unit={`dari ${d[0].length}`} note="grade A–B, tanpa masalah" />
-        <Kpi k="Bermasalah tersembunyi" v={kat("TERSEMBUNYI (status Active)")} unit="stasiun" note="status Active, data cacat" />
-        <Kpi k="Jam sensor beku berlabel VALID" v={fmt(beku, 0)} unit="jam" note="Banjarbaru (BJB-01), ±10 bulan" />
+        <Kpi k="Stasiun Andal" v={kat("Andal")} unit={`dari ${d[0].length}`} viz={<DotsViz n={kat("Andal")} total={d[0].length} tone="focus" cols={14} />} note="grade A–B, tanpa masalah" />
+        <Kpi k="Bermasalah tetapi Tersembunyi" v={kat("TERSEMBUNYI (status Active)")} unit="stasiun" viz={<DotsViz n={kat("TERSEMBUNYI (status Active)")} total={d[0].length} tone="alert" cols={14} />} note="status Active, data cacat" />
+        <Kpi k="Jam Sensor Beku Berlabel VALID" v={fmt(beku, 0)} unit="jam" viz={<DotsViz n={Math.round(beku / 730)} total={12} tone="alert" cols={12} />} note="Banjarbaru (BJB-01). Satu titik = satu bulan: ±10 dari 12 bulan." />
       </>}
       main={
-        <Card title="Di mana titik pantau baru paling dibutuhkan" sub="Urutan dari risiko polusi, pemburukan, keandalan data, dan stasiun kembar">
+        <Card title="Di Mana Titik Pantau Baru Paling Dibutuhkan" sub="Urutan dari risiko polusi, pemburukan, keandalan data, dan stasiun kembar">
           <ol className="prio">
             {PRIO.map((r, k) => (
               <li key={r.w}>
@@ -116,23 +117,23 @@ export default function Q5Jaringan() {
       }
       method="Grade: A ≥95% hari valid & imputasi <5% · B ≥90% · C ≥75% · D ≥25% · E <25%. 'Tersembunyi' = status Active tapi grade C–E atau ada sensor beku. Skor risiko = gabungan rata-rata, persentil 95, dan tren PM2.5. Anomali dari Isolation Forest per stasiun."
       supports={[
-        <Card key="a" title="Polusi tinggi, data lemah" sub="Kotak merah = prioritas: risiko tinggi tapi datanya tidak andal">
+        <Card key="a" title="Polusi Tinggi, Data Lemah" sub="Kotak merah = prioritas: risiko tinggi tapi datanya tidak andal">
           <Chart option={prioOpt} height={260} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} />
         </Card>,
       ]}
       more={[
-        <Card key="v" title="Hari dengan data valid per stasiun" sub="Warna = temuan pemeriksaan data; huruf = grade. Klik batang untuk profil stasiun.">
+        <Card key="v" title="Hari dengan Data Valid per Stasiun" sub="Warna = temuan pemeriksaan data; huruf = grade. Klik batang untuk profil stasiun.">
           <Chart option={covOpt} height={Math.max(420, cov.length * 21)} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} ariaLabel="Cakupan data valid per stasiun" />
         </Card>,
-        <Card key="c" title="Hari anomali yang jatuh di musim asap" sub={`Garis = porsi Jul–Okt dalam setahun (34%). Gambut: ${fmt(anom["gambut_di_musim_asap_%"], 0)}%.`}>
+        <Card key="c" title="Hari Anomali yang Jatuh di Musim Asap" sub={`Garis = porsi Jul–Okt dalam setahun (34%). Gambut: ${fmt(anom["gambut_di_musim_asap_%"], 0)}%.`}>
           <Chart option={anOpt} height={260} />
         </Card>,
       ]}
       extra={
         <details className="more">
-          <summary>Rapor lengkap per stasiun</summary>
+          <summary>Rapor Lengkap per Stasiun</summary>
           <div style={{ marginTop: 8 }}>
-        <Card title="Rapor kualitas data per stasiun" sub="Klik judul kolom untuk mengurutkan, klik baris untuk profil.">
+        <Card title="Rapor Kualitas Data per Stasiun" sub="Klik judul kolom untuk mengurutkan, klik baris untuk profil.">
           <div className="tbl-wrap">
             <table className="tbl">
               <thead><tr>

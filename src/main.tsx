@@ -1,10 +1,11 @@
 import { StrictMode } from "react";
 import { createRoot } from "react-dom/client";
-import "@fontsource/fira-sans/400.css";
-import "@fontsource/fira-sans/500.css";
-import "@fontsource/fira-sans/600.css";
-import "@fontsource/fira-sans/700.css";
+import "@fontsource-variable/fraunces/full.css";
+import "@fontsource-variable/plus-jakarta-sans/wght.css";
 import "./styles.css";
+import "./v4.css";
+import "./v4-sim.css";
+import "./v4-tour.css";
 import App from "./App";
 import { applyChrome } from "./lib/theme";
 

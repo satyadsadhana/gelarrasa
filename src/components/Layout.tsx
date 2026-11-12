@@ -4,70 +4,51 @@ import { KAWASAN, PERIODE, PULAU, useApp, type FilterKey, type PeriodeKey } from
 import { useTour } from "./Tour";
 import StationPicker from "./StationPicker";
 import { PICK_COL, PICK_GLYPH } from "../lib/theme";
+import NavIcon from "./NavIcon";
+import { Flow, InfoTip, Reveal } from "./Viz";
 
 // deck.gl dimuat terpisah supaya halaman pertama tetap ringan
 const PageStage = lazy(() => import("./PageStage"));
 
+
 export const PAGES = [
-  { path: "/", short: "Ringkasan", nav: "Ringkasan", label: "Gambaran umum data", desc: "Gambaran umum 27 stasiun pemantau dan 27 rumah sakit, 1 Jan 2024 – 14 Okt 2026.", filters: ["periode", "pulau", "kawasan"] },
-  { path: "/kondisi", short: "Kualitas Udara", nav: "Udara", label: "Baku mutu, ISPU, IKU & tren", desc: "Rata-rata dan lonjakan PM2.5 tiap stasiun dibandingkan baku mutu nasional, target WHO, dan IKU, beserta trennya.", filters: ["pulau", "kawasan", "acuan"] },
-  { path: "/waktu", short: "Pola Waktu", nav: "Waktu", label: "Harian, musiman, episode", desc: "Pergerakan PM2.5 dari hari ke hari, pola musiman, awal musim risiko, dan pola jam.", filters: ["periode", "pulau", "kawasan"] },
-  { path: "/pemicu", short: "Faktor Pemicu", nav: "Pemicu", label: "Musim, lalu lintas, cuaca", desc: "Sumber variasi PM2.5: lokasi, musim, lalu lintas, cuaca, dan arah angin.", filters: ["pulau", "kawasan"] },
-  { path: "/dampak", short: "Dampak Kesehatan", nav: "Dampak", label: "PM2.5 & kasus rumah sakit", desc: "Hubungan PM2.5 harian dengan kasus ISPA, asma, PPOK, kardiovaskular, dan kematian di 25 rumah sakit.", filters: [] },
-  { path: "/jaringan", short: "Jaringan Pemantauan", nav: "Jaringan", label: "Kualitas data stasiun", desc: "Keandalan data tiap stasiun, penempatan stasiun, dan prioritas perbaikan.", filters: ["pulau", "kawasan"] },
-  { path: "/aksi", short: "Simulasi & Rekomendasi", nav: "Simulasi", label: "Skenario kebijakan", desc: "Simulasi jumlah kasus bila PM2.5 dibatasi atau dikurangi, dan rekomendasi tindakan.", filters: [] },
+  { path: "/", short: "Ringkasan", nav: "Ringkasan", q: "Gambaran Umum 27 Stasiun dan 27 Rumah Sakit", label: "Gambaran umum data", desc: "Gambaran umum 27 stasiun pemantau dan 27 rumah sakit, 1 Jan 2024 – 14 Okt 2026.", filters: ["periode", "pulau", "kawasan"] },
+  { path: "/kondisi", short: "Kualitas Udara", nav: "Udara", q: "Seberapa Kotor Udara Kita?", label: "Baku mutu, ISPU, IKU & tren", desc: "Rata-rata dan lonjakan PM2.5 tiap stasiun dibandingkan baku mutu nasional, target WHO, dan IKU, beserta trennya.", filters: ["pulau", "kawasan", "acuan"] },
+  { path: "/waktu", short: "Pola Waktu", nav: "Waktu", q: "Kapan Udara Paling Berbahaya?", label: "Harian, musiman, episode", desc: "Pergerakan PM2.5 dari hari ke hari, pola musiman, awal musim risiko, dan pola jam.", filters: ["periode", "pulau", "kawasan"] },
+  { path: "/pemicu", short: "Faktor Pemicu", nav: "Pemicu", q: "Apa yang Membuat Udara Kotor?", label: "Musim, lalu lintas, cuaca", desc: "Sumber variasi PM2.5: lokasi, musim, lalu lintas, cuaca, dan arah angin.", filters: ["pulau", "kawasan"] },
+  { path: "/dampak", short: "Dampak Kesehatan", nav: "Dampak", q: "Apa Dampaknya bagi Kesehatan?", label: "PM2.5 & kasus rumah sakit", desc: "Hubungan PM2.5 harian dengan kasus ISPA, asma, PPOK, kardiovaskular, dan kematian di 25 rumah sakit.", filters: [] },
+  { path: "/jaringan", short: "Jaringan Pemantauan", nav: "Jaringan", q: "Bisakah Datanya Dipercaya?", label: "Kualitas data stasiun", desc: "Keandalan data tiap stasiun, penempatan stasiun, dan prioritas perbaikan.", filters: ["pulau", "kawasan"] },
+  { path: "/aksi", short: "Simulasi & Rekomendasi", nav: "Simulasi", q: "Apa yang Bisa Dilakukan?", label: "Skenario kebijakan", desc: "Simulasi jumlah kasus bila PM2.5 dibatasi atau dikurangi, dan rekomendasi tindakan.", filters: [] },
 ] as const;
 
-function Logo() {
-  const [ok, setOk] = useState(true);
-  return ok
-    ? <img src="/logo-gelar-rasa.png" alt="Logo Gelar Rasa 2026" onError={() => setOk(false)} />
-    : <span className="brand-logo-slot" title="Letakkan file logo di public/logo-gelar-rasa.png">GELAR RASA</span>;
-}
-
-const num = (i: number) => String(i + 1).padStart(2, "0");
-
-/** Menu: tertutup default. Hover tombol = titik navigasi; klik = panel meluncur dari kiri. */
-function Menu() {
+/** Rel navigasi kiri: logo Gelar Rasa di puncak, ikon + label tiap halaman, lalu Tentang Data dan Tur. */
+function Rail() {
   const tour = useTour();
-  const { pathname } = useLocation();
-  const [open, setOpen] = useState(false);
-  useEffect(() => { setOpen(false); }, [pathname]);
-  useEffect(() => {
-    if (!open) return;
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    window.addEventListener("keydown", esc);
-    return () => window.removeEventListener("keydown", esc);
-  }, [open]);
   return (
-    <>
-      <div className={`menu-wrap${open ? " hide" : ""}`}>
-        <button className="menu-btn" aria-label="Buka menu" aria-expanded={open} onClick={() => setOpen(true)}>
-          <span /><span /><span />
+    <aside className="rail" aria-label="Navigasi utama">
+      <Link to="/" className="rail-logo" aria-label="Kembali ke Ringkasan">
+        <img src="/logo-gelar-rasa.png" alt="Logo Gelar Rasa 2026" />
+      </Link>
+      <nav className="rail-nav" aria-label="Halaman">
+        {PAGES.map((p, i) => (
+          <NavLink key={p.path} to={p.path} end className="rail-item">
+            <NavIcon path={p.path} size={21} />
+            <span>{p.nav}</span>
+            <em className="rail-tip" role="tooltip"><small>Bagian {i + 1}</small><b>{p.short}</b>{p.q}</em>
+          </NavLink>
+        ))}
+      </nav>
+      <div className="rail-foot">
+        <NavLink to="/tentang" className="rail-item">
+          <NavIcon path="/tentang" size={20} /><span>Data</span>
+          <em className="rail-tip" role="tooltip"><b>Tentang Data</b>Pembersihan, metode, dan keterbatasan</em>
+        </NavLink>
+        <button className="rail-item rail-tour" onClick={() => tour.start()}>
+          <NavIcon path="tur" size={21} /><span>Tur</span>
+          <em className="rail-tip" role="tooltip"><b>Tur Cerita</b>Delapan adegan, kurang dari 3 menit</em>
         </button>
-        <nav className="dots" aria-label="Lompat ke halaman">
-          {PAGES.map((p, i) => (
-            <NavLink key={p.path} to={p.path} end aria-label={p.short}><i /><em>{num(i)} {p.nav}</em></NavLink>
-          ))}
-        </nav>
       </div>
-      <div className={`scrim${open ? " on" : ""}`} onClick={() => setOpen(false)} aria-hidden />
-      <aside className={`drawer-nav${open ? " on" : ""}`} aria-hidden={!open}>
-        <button className="drawer-x" aria-label="Tutup menu" tabIndex={open ? 0 : -1} onClick={() => setOpen(false)}>×</button>
-        <nav aria-label="Halaman">
-          {PAGES.map((p, i) => (
-            <NavLink key={p.path} to={p.path} end tabIndex={open ? 0 : -1} style={{ "--d": open ? `${80 + i * 35}ms` : "0ms" } as React.CSSProperties}>
-              <small>{num(i)}</small><b>{p.short}</b>
-            </NavLink>
-          ))}
-        </nav>
-        <div className="drawer-foot" style={{ "--d": open ? "340ms" : "0ms" } as React.CSSProperties}>
-          <NavLink to="/tentang" tabIndex={open ? 0 : -1}>Tentang Data</NavLink>
-          <button tabIndex={open ? 0 : -1} onClick={() => { setOpen(false); tour.start(); }}>Mulai tur</button>
-          <span className="drawer-logo"><Logo /></span>
-        </div>
-      </aside>
-    </>
+    </aside>
   );
 }
 
@@ -168,8 +149,11 @@ export default function Layout({ children }: { children: ReactNode }) {
   useArrowNav();
   return (
     <div className="shell">
-      <Menu />
-      <header className="topbar"><Settings /></header>
+      <Rail />
+      <header className="topbar">
+        <Link to="/" className="topbar-logo" aria-label="Kembali ke Ringkasan"><img src="/logo-gelar-rasa.png" alt="Logo Gelar Rasa 2026" /></Link>
+        <Settings />
+      </header>
       <div className="content">{children}</div>
     </div>
   );
@@ -178,57 +162,124 @@ export default function Layout({ children }: { children: ReactNode }) {
 type PageProps = {
   path: string; main: ReactNode; method?: ReactNode; kpis?: ReactNode;
   supports?: ReactNode[]; extra?: ReactNode;
-  /** Judul temuan (kalimat), menggantikan nama halaman sebagai judul besar. */
+  /** Jawaban (kalimat temuan) yang tampil sebagai judul besar di bawah pertanyaan halaman. */
   headline?: ReactNode;
-  /** Grafik detail untuk analis, dilipat di "Telusuri lebih dalam". */
+  /** Baris cerita selebar halaman (teks + grafik, bergantian kiri-kanan). */
+  stories?: ReactNode;
+  /** Grafik detail untuk analis, ditaruh di panel "Telusuri Lebih Dalam" bertab. */
   more?: ReactNode[];
   /** Batas skenario untuk panggung 3D (halaman Simulasi). */
   stageCap?: number | null;
+  /** Sembunyikan panggung 3D bawaan. */
+  noStage?: boolean;
+  /** Bagian tambahan tepat di bawah panggung 3D. */
+  afterStage?: ReactNode;
 };
-/** Kerangka halaman topik: judul + satu kalimat, (opsional) deret angka, grafik utama selebar halaman, grafik pendukung. */
-export function Page({ path, main, method, kpis, supports, extra, stageCap, headline, more }: PageProps) {
+/** Kerangka halaman topik: pertanyaan → jawaban → panggung 3D → jalur temuan → grafik utama → cerita → telusuri. */
+export function Page({ path, main, method, kpis, supports, extra, stageCap, headline, more, stories, noStage, afterStage }: PageProps) {
   const i = PAGES.findIndex((p) => p.path === path);
-  const p = PAGES[i], prev = PAGES[i - 1], next = PAGES[i + 1] ?? null;
+  const p = PAGES[i];
   return (
-    <main>
-      <div className="q-head">
-        <span className="page-kicker">{String(i + 1).padStart(2, "0")} · {p.short}</span>
-        <h1 className="page-title">{headline ?? p.short}</h1>
-        {method && <div className="page-desc"><MethodNote>{method}</MethodNote></div>}
-      </div>
-      <Suspense fallback={<div className="stage3d" style={{ height: 380 }} />}><PageStage path={path} cap={stageCap} /></Suspense>
-      {kpis && <div data-tour="kpis" className="kpis row" style={{ marginTop: 0, marginBottom: "var(--gap)" }}>{kpis}</div>}
-      <div data-tour="main">{main}</div>
+    <main className="topic">
+      <header className="q-head">
+        <div className="q-meta">
+          <span className="q-icon"><NavIcon path={path} size={18} /></span>
+          <span className="q-name">{p.short}</span>
+          <span className="q-prog" aria-label={`Bagian ${i + 1} dari ${PAGES.length}`}>
+            {PAGES.map((_, k) => <i key={k} className={k < i ? "done" : k === i ? "on" : ""} />)}
+          </span>
+        </div>
+        <p className="page-q">{p.q}</p>
+        <h1 className="page-title">{headline ?? p.short}{method && <InfoTip>{method}</InfoTip>}</h1>
+      </header>
+      {!noStage && <Suspense fallback={<div className="stage3d" style={{ height: 440 }} />}><PageStage path={path} cap={stageCap} /></Suspense>}
+      {afterStage}
+      {kpis && <Flow label="Jalur temuan">{kpis}</Flow>}
+      <div data-tour="main" className="main-slot">{main}</div>
+      {stories && <div className="stories">{stories}</div>}
       {supports && <div className={`grid-sup ${supports.length % 2 === 0 ? "two" : ""}`}>{supports}</div>}
-      {more && more.length > 0 && (
-        <details className="more telusuri">
-          <summary>Telusuri lebih dalam <small>{more.length} grafik untuk analis</small></summary>
-          <div className="grid-sup two">{more}</div>
-        </details>
-      )}
+      {more && more.length > 0 && <MorePanel items={more} />}
       {extra}
-      <nav className="pager">
-        {prev ? <Link to={prev.path}>← <b>{prev.short}</b></Link> : <span />}
-        {next ? <Link to={next.path}><b>{next.short}</b> →</Link> : <Link to="/tentang"><b>Tentang Data</b> →</Link>}
-      </nav>
+      <Pager i={i} />
     </main>
   );
 }
 
-/** Catatan cara hitung: tersembunyi di balik tombol kecil supaya halaman tidak penuh teks. */
-export function MethodNote({ children }: { children: ReactNode }) {
+/** Panel analis: satu grafik tampil per tab, di dalam wadah padat (tidak menembus latar). */
+function MorePanel({ items }: { items: ReactNode[] }) {
+  const [open, setOpen] = useState(false);
+  const [k, setK] = useState(0);
+  const title = (n: ReactNode, idx: number) => {
+    const pr = (n as { props?: { title?: ReactNode; "data-title"?: string } })?.props;
+    const t = pr?.["data-title"] ?? pr?.title;
+    return typeof t === "string" ? t : `Grafik ${idx + 1}`;
+  };
   return (
-    <details className="method-note">
-      <summary>Cara hitung</summary>
-      <div>{children}</div>
-    </details>
+    <section className={`more-panel${open ? " open" : ""}`}>
+      <button className="more-head" aria-expanded={open} onClick={() => setOpen((o) => !o)}>
+        <span className="more-ico" aria-hidden>{open ? "−" : "+"}</span>
+        <span><b>Telusuri Lebih Dalam</b><small>{items.length} grafik tambahan untuk pembaca yang ingin detail</small></span>
+      </button>
+      {open && (
+        <div className="more-body">
+          {items.length > 1 && (
+            <div className="more-tabs" role="tablist">
+              {items.map((it, idx) => (
+                <button key={idx} role="tab" aria-selected={k === idx} onClick={() => setK(idx)}>{title(it, idx)}</button>
+              ))}
+            </div>
+          )}
+          <div className="more-slot" key={k}>{items[Math.min(k, items.length - 1)]}</div>
+        </div>
+      )}
+    </section>
   );
 }
 
-/** Kartu angka kecil: label, nilai, dan satu baris konteks. */
-export function Kpi({ k, v, unit, note }: { k: ReactNode; v: ReactNode; unit?: ReactNode; note?: ReactNode }) {
+/** Ke bab berikutnya: pertanyaan halaman selanjutnya ditulis besar. */
+function Pager({ i }: { i: number }) {
+  const prev = PAGES[i - 1], next = PAGES[i + 1];
   return (
-    <div className="kpi"><span className="k">{k}</span><div className="v">{v}{unit && <small> {unit}</small>}</div>{note && <p>{note}</p>}</div>
+    <nav className="pager" aria-label="Pindah bagian">
+      {prev ? <Link className="pg prev" to={prev.path}><small>Sebelumnya</small><b>{prev.short}</b></Link> : <span />}
+      {next
+        ? <Link className="pg next" to={next.path}><small>Lanjut ke Bagian {i + 2}: {next.short}</small><b>{next.q}</b><NavIcon path={next.path} size={26} /></Link>
+        : <Link className="pg next" to="/tentang"><small>Penutup</small><b>Bagaimana Data Ini Dibersihkan?</b><NavIcon path="/tentang" size={26} /></Link>}
+    </nav>
+  );
+}
+
+/** Catatan cara hitung: ikon ⓘ kecil (dipertahankan untuk kompatibilitas). */
+export function MethodNote({ children }: { children: ReactNode }) {
+  return <InfoTip>{children}</InfoTip>;
+}
+
+/** Satu titik di jalur temuan: label, angka, visual mini, dan satu baris konteks. */
+export function Kpi({ k, v, unit, note, viz }: { k: ReactNode; v: ReactNode; unit?: ReactNode; note?: ReactNode; viz?: ReactNode }) {
+  return (
+    <div className="fact" role="listitem">
+      <span className="fact-node" aria-hidden />
+      <span className="k">{k}</span>
+      <div className="v">{v}{unit && <small> {unit}</small>}</div>
+      {viz && <div className="fact-viz">{viz}</div>}
+      {note && <p>{note}</p>}
+    </div>
+  );
+}
+
+/** Baris cerita: kolom teks (judul, angka besar, penjelasan) + grafik; `flip` menukar sisi. */
+export function Story({ title, big, bigNote, children, chart, right, flip, tone = "focus" }: { title: ReactNode; big?: ReactNode; bigNote?: ReactNode; children?: ReactNode; chart: ReactNode; right?: ReactNode; flip?: boolean; tone?: "focus" | "gambut" | "alert" }) {
+  return (
+    <Reveal as="section" className={`story-row${flip ? " flip" : ""} t-${tone}`}>
+      <div className="story-text">
+        <h2>{title}</h2>
+        {big && <div className="story-big">{big}</div>}
+        {bigNote && <p className="story-bignote">{bigNote}</p>}
+        {children && <div className="story-body">{children}</div>}
+        {right && <div className="story-ctrl">{right}</div>}
+      </div>
+      <div className="story-chart">{chart}</div>
+    </Reveal>
   );
 }
 

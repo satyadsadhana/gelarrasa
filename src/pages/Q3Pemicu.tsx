@@ -1,7 +1,8 @@
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
-import { Card, Page, Seg } from "../components/Layout";
+import { Card, Kpi, Page, Seg } from "../components/Layout";
+import { BarsViz, DotsViz, RulerViz } from "../components/Viz";
 import { useData } from "../lib/data";
 import { fmt, UG } from "../lib/format";
 import { useApp, usePick, useStationFilter } from "../lib/state";
@@ -28,6 +29,9 @@ export default function Q3Pemicu() {
   if (!d) return <div className="loading">Memuat data faktor pemicu…</div>;
   const [dec, shap, tr, rose] = d;
   const comps = Object.keys(dec.skala[skala]);
+  const comps0 = Object.keys(dec.skala["Skala asli (µg/m³)"]);
+  const kon = shap["kontribusi_%"];
+  const cuacaPct = (kon["Suhu"] ?? 0) + (kon["Kelembapan"] ?? 0) + (kon["Angin (kecepatan & arah)"] ?? 0);
 
   const decOpt: EChartsOption = {
     tooltip: { trigger: "item", formatter: (p: any) => `${p.seriesName}: <b>${fmt(p.value, 1)}%</b>` },
@@ -76,9 +80,17 @@ export default function Q3Pemicu() {
 
   return (
     <Page path="/pemicu"
-      headline="Musim menentukan, lalu lintas menambah di kota"
+      headline="Musim Menentukan, Lalu Lintas Menambah di Kota"
+      kpis={<>
+        <Kpi k="Porsi Variasi dari Musim" v={`${fmt(dec.skala["Skala asli (µg/m³)"][comps0[1]] ?? 0, 0)}%`}
+          viz={<BarsViz values={comps0.map((c) => dec.skala["Skala asli (µg/m³)"][c])} labels={["Lokasi", "Musim", "Harian"]} tone="gambut" />} note="Naik-turun PM2.5 harian paling banyak ditentukan musim dan episode asap." />
+        <Kpi k="Lalu Lintas vs PM2.5 di Luar Musim Asap" v={`ρ = ${fmt(tr.rho_pm25, 2)}`}
+          viz={<RulerViz value={tr.rho_pm25} max={1} marks={[{ v: 0.3, l: "lemah 0,3" }, { v: 0.7, l: "kuat 0,7" }]} />} note="Jan–Jun, antarstasiun. Makin ramai jalan, makin tinggi PM2.5." />
+        <Kpi k="Pengaruh Cuaca dalam Satu Stasiun" v={`${fmt(cuacaPct, 0)}%`}
+          viz={<DotsViz n={Math.round(cuacaPct / 5)} total={20} tone="focus" cols={10} />} note="Suhu, kelembapan, dan angin bersama-sama. Satu titik = 5%." />
+      </>}
       main={
-        <Card title="Sumber variasi PM2.5 harian"
+        <Card title="Sumber Variasi PM2.5 Harian"
           sub="Dari mana naik-turun PM2.5 berasal"
           right={<Seg value={skala} onChange={setSkala} options={[["Skala asli (µg/m³)", "Skala asli"], ["Skala log", "Skala log"]]} />}
 >
@@ -87,15 +99,15 @@ export default function Q3Pemicu() {
       }
       method={`Dekomposisi varians bertingkat: stasiun → bulan → hari. Kontribusi faktor dari LightGBM + SHAP pada simpangan log PM2.5 dari rata-rata stasiunnya sendiri; dilatih 2024–2025, diuji 2026 (R² ${fmt(shap.r2_uji_2026, 2)}). Lalu lintas dan jarak ke jalan saling terkait (ρ = ${fmt(tr.rho_lalu_lintas_jarak, 2)}), jadi dibaca sebagai satu faktor paparan jalan raya. Korelasi cuaca per jam: median |ρ| ≤ 0,12.`}
       supports={[
-        <Card key="a" title="Faktor di dalam satu stasiun" sub="% kontribusi (SHAP)">
+        <Card key="a" title="Faktor di dalam Satu Stasiun" sub="% kontribusi (SHAP)">
           <Chart option={shapOpt} height={250} />
         </Card>,
-        <Card key="b" title="Makin ramai jalan, makin kotor" sub="Jan–Jun · satu titik = satu stasiun · besar = dekat jalan">
+        <Card key="b" title="Makin Ramai Jalan, Makin Kotor" sub="Jan–Jun · satu titik = satu stasiun · besar = dekat jalan">
           <Chart option={trOpt} height={250} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} />
         </Card>,
       ]}
       more={[
-        <Card key="c" title="Arah angin dan PM2.5" sub={`${byCode[rs].nama} · selisih antar arah ${fmt(rose["rentang_pm25_%"][rs], 1)}%`}
+        <Card key="c" title="Arah Angin dan PM2.5" sub={`${byCode[rs].nama} · selisih antar arah ${fmt(rose["rentang_pm25_%"][rs], 1)}%`}
           right={<div className="tabs">{Object.keys(rose.data).map((c) => <button key={c} aria-pressed={rs === c} onClick={() => setRs(c)}>{byCode[c].nama}</button>)}</div>}>
           <Chart option={roseOpt} height={250} />
         </Card>,

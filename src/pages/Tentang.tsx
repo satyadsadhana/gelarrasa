@@ -29,10 +29,10 @@ export default function Tentang() {
   const cols: [string, string][] = [["satuan_asli", "Satuan"], ["sel_teks_error", "Teks error"], ["sel_sentinel", "Sentinel"], ["baris_dibuang_qc", "Dibuang QC"], ["SUSPECT_dipakai", "SUSPECT dipakai"], ["baris_pm25>pm10", "PM2.5>PM10"], ["baris_sensor_beku", "Jam beku"], ["jam_pm25_diinterpolasi", "Jam diinterpolasi"], ["cakupan_pm25_%", "Cakupan PM2.5"]];
   return (
     <main>
-      <div className="q-head"><h1 className="page-title">Tentang Data</h1><p className="page-desc">Dari data mentah ke dashboard: langkah pembersihan, log per stasiun, model yang dipakai, keterbatasan, dan glosarium.</p></div>
+      <div className="q-head"><p className="page-q">Bagaimana Data Ini Dibersihkan?</p><h1 className="page-title">Tentang Data</h1><p className="page-desc">Dari data mentah ke dashboard: langkah pembersihan, log per stasiun, model yang dipakai, keterbatasan, dan glosarium.</p></div>
       <div className="grid-sup">
         <section className="card" style={{ gridColumn: "span 2" }}>
-          <h2>Alur pembersihan</h2>
+          <h2>Alur Pembersihan</h2>
           <ol style={{ paddingLeft: 18, marginTop: 10 }}>{STEPS.map(([a, b]) => <li key={a} style={{ fontSize: 13.5, marginBottom: 6 }}><b>{a}:</b> {b}</li>)}</ol>
           <p className="note">JMB-02 rusak total dan dikeluarkan dari analisis polutan; MER-01 hanya punya ±10 hari sah sehingga dikeluarkan dari statistik per stasiun.</p>
         </section>
@@ -47,7 +47,7 @@ export default function Tentang() {
         </section>
       </div>
       <section className="card" style={{ marginTop: 18 }}>
-        <h2>Log pembersihan per stasiun</h2>
+        <h2>Log Pembersihan per Stasiun</h2>
         <div className="tbl-wrap" style={{ marginTop: 8 }}>
           {d ? (
             <table className="tbl"><thead><tr><th>Stasiun</th><th>Status</th>{cols.map(([, l]) => <th key={l} className="num">{l}</th>)}</tr></thead>
@@ -60,7 +60,7 @@ export default function Tentang() {
         </div>
       </section>
       <div className="grid-sup">
-        <section className="card"><h2>Kartu model</h2>
+        <section className="card"><h2>Kartu Model</h2>
           <ul style={{ paddingLeft: 18, fontSize: 13, lineHeight: 1.6, marginTop: 8 }}>
             <li><b>M1 Tipologi</b>: K-Means pada bentuk pola (lonjakan & musiman), dicek dengan hierarchical (ARI 0,69).</li>
             <li><b>M2 Pemicu</b>: LightGBM + SHAP, latih 2024–2025, uji 2026 (R² 0,72).</li>

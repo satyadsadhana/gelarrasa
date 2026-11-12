@@ -62,27 +62,27 @@ export default function PageStage({ path, cap = null }: { path: string; cap?: nu
         // dihitung dari rata-rata (bukan kolom ubah_% yang dibulatkan) supaya sama dengan kartu: +102%
         const ch = (g: string) => (ak.tren_1jan_14okt[g]["2026"] / ak.tren_1jan_14okt[g]["2024"] - 1) * 100;
         return [
-          { t: "Hampir semua di atas batas", view: "nasional", values: v25,
+          { t: "Hampir Semua di Atas Batas", view: "nasional", values: v25,
             d: <><b>{a25.filter((r) => r.lampaui_PP22).length} dari {a25.length}</b> stasiun punya rata-rata 2025 di atas baku mutu tahunan 15 {UG}.</> },
-          { t: "Kalimantan paling pekat", view: "kalimantan", values: mean,
+          { t: "Kalimantan Paling Pekat", view: "kalimantan", values: mean,
             d: <>Rata-rata per pulau: {rank.map(([p, v], k) => <span key={p}>{k ? " · " : ""}{p} <b>{fmt(v)}</b></span>)} {UG}.</> },
-          { t: "Gambut memburuk, kota datar", view: "barat", values: per("2026"),
+          { t: "Gambut Memburuk, Kota Datar", view: "barat", values: per("2026"),
             d: <>1 Jan–14 Okt, 2024 → 2026: kawasan gambut <b>{fmtPct(ch("Gambut"), 0, true)}</b>, kawasan lain hanya {fmtPct(ch("Non-gambut"), 0, true)}.</> },
-          { t: "IKU bilang \"Baik\"", view: "nasional", values: v25, visible: (c) => blind.has(c),
+          { t: "IKU Bilang \"Baik\"", view: "nasional", values: v25, visible: (c) => blind.has(c),
             d: <><b>{blind.size} stasiun</b> ber-IKU "Baik" padahal PM2.5 &gt; 35 {UG}, karena IKU hanya menghitung NO₂ dan SO₂.</> },
         ];
       }
       case "/waktu": {
         const pk = ak.puncak_bulanan_gambut, mg = ak.minggu_awal_risiko_gambut;
         return [
-          { t: "Tiap tahun makin pekat", view: "barat", values: per(year), years: true,
+          { t: "Tiap Tahun Makin Pekat", view: "barat", values: per(year), years: true,
             d: <>Puncak bulanan kawasan gambut: <b>{fmt(pk["2024"], 0)} → {fmt(pk["2025"], 0)} → {fmt(pk["2026"], 0)}</b> {UG}. Ganti tahun di pojok kiri.</> },
-          { t: "Mulai akhir Juli", view: "kalimantan", values: per("2026"),
+          { t: "Mulai Akhir Juli", view: "kalimantan", values: per("2026"),
             d: <>Musim risiko gambut dimulai <b>minggu ke-{mg["2026"]}</b> (2024 dan 2025: minggu ke-{mg["2024"]}), puncaknya September–Oktober.</> },
-          { t: "Kota punya jam sibuk", view: "jawa", values: mean,
+          { t: "Kota Punya Jam Sibuk", view: "jawa", values: mean,
             d: <>Stasiun tepi jalan memuncak <b>07–09 dan 17–19</b>. Asap gambut tidak kenal jam: datar sepanjang hari.</> },
           // shortcut: 0,03% disalin dari catatan metode Pola Waktu; pindah ke angka_kunci bila pipeline diulang
-          { t: "Akhir pekan tidak lebih bersih", view: "jawa", values: mean,
+          { t: "Akhir Pekan Tidak Lebih Bersih", view: "jawa", values: mean,
             d: <>Selisih hari kerja dan akhir pekan hanya <b>0,03%</b> (median stasiun). Sumber utamanya bukan aktivitas kantor.</> },
         ];
       }
@@ -94,7 +94,7 @@ export default function PageStage({ path, cap = null }: { path: string; cap?: nu
             d: <>Naik-turun PM2.5 paling banyak ditentukan <b>musim dan episode asap</b>, bukan lokasi.</> },
           { t: `Lokasi: ${fmt(dv["Lokasi (antar stasiun)"], 0)}%`, view: "nasional", values: mean,
             d: <>Beda antarstasiun menjelaskan sisanya. Pada skala log porsinya naik ke <b>59%</b>: kota memang selalu lebih kotor.</> },
-          { t: "Kota: lalu lintas", view: "jawa", values: mean,
+          { t: "Kota: Lalu Lintas", view: "jawa", values: mean,
             d: <>Di luar musim asap (Jan–Jun), lalu lintas dan PM2.5 searah: <b>ρ = {fmt(ak.korelasi_lalu_lintas_pm25_JanJun, 2)}</b>.</> },
           { t: `Cuaca: ${fmt(cuaca, 0)}%`, view: "rendah", values: mean,
             d: <>Suhu, kelembapan, dan angin hanya menggeser <b>{fmt(cuaca, 0)}%</b>. Arah angin hampir tidak membedakan PM2.5.</> },
@@ -104,13 +104,13 @@ export default function PageStage({ path, cap = null }: { path: string; cap?: nu
         const rr = ak.rr_per_lipat_dua;
         const p = (k: string) => fmtPct((rr[k].rr - 1) * 100, 0, true);
         return [
-          { t: "PM2.5 berlipat dua", view: at(first), values: mean,
+          { t: "PM2.5 Berlipat Dua", view: at(first), values: mean,
             d: <>Kasus ISPA balita di RS pasangan naik <b>{p("ISPA balita")}</b>, kematian <b>{p("Kematian")}</b>.{first ? <> Fokus: {first.nama}.</> : null}</> },
-          { t: "Di hari yang sama", view: at(first, 6.2, 20), values: mean,
+          { t: "Di Hari yang Sama", view: at(first, 6.2, 20), values: mean,
             d: <>Efeknya muncul <b>hari itu juga</b>. Jeda 1–3 hari dan uji plasebo tidak bermakna.</> },
-          { t: "Balita ≈ lansia", view: "nasional", values: mean,
+          { t: "Balita ≈ Lansia", view: "nasional", values: mean,
             d: <>ISPA balita {p("ISPA balita")} dan lansia {p("ISPA lansia")}: kedua kelompok <b>sama rentan</b>.</> },
-          { t: `Di atas ${ak.ambang.Kematian}, jantung ikut`, view: "kalimantan", values: per("2026"),
+          { t: `Di Atas ${ak.ambang.Kematian}, Jantung Ikut`, view: "kalimantan", values: per("2026"),
             d: <>Setelah PM2.5 harian lewat <b>{ak.ambang.Kematian} {UG}</b>, kasus jantung dan kematian naik lebih tajam.</> },
         ];
       }
@@ -121,13 +121,13 @@ export default function PageStage({ path, cap = null }: { path: string; cap?: nu
         // shortcut: daftar prioritas = Tabel 3.5 laporan (build_docx.py); ubah keduanya bersamaan
         const prio = ["BJB-01", "SM2-01", "KTG-02", "JMB-02", "MER-01", "KTB-01"];
         return [
-          { t: `${j.Andal} dari 27 andal`, view: "nasional", values: mean, visible: andal,
+          { t: `${j.Andal} dari 27 Andal`, view: "nasional", values: mean, visible: andal,
             d: <>Tiang abu-abu pendek = <b>tidak andal</b>: {j["Diakui metadata"]} diakui metadata, {j["TERSEMBUNYI (status Active)"]} tersembunyi.</> },
-          { t: "Beku, tapi berlabel VALID", view: at(byCode["BJB-01"], 6), values: mean, labels: ["BJB-01", "SM2-01"],
+          { t: "Beku, tetapi Berlabel VALID", view: at(byCode["BJB-01"], 6), values: mean, labels: ["BJB-01", "SM2-01"],
             d: <>Banjarbaru membeku <b>{fmt(beku, 0)} jam</b> dengan label VALID. QC yang hanya membaca label tidak menangkapnya.</> },
-          { t: "Kandidat kembar", view: at(byCode["KTG-01"], 6.3, 30), values: mean, labels: ["KTG-01", "KTG-02"],
+          { t: "Kandidat Kembar", view: at(byCode["KTG-01"], 6.3, 30), values: mean, labels: ["KTG-01", "KTG-02"],
             d: <>Palangka Raya dan Sampit hanya beda level <b>{fmt(kembar["beda_level_%"], 1)}%</b> ({fmt(kembar.jarak_km, 0)} km). Perlu verifikasi lapangan.</> },
-          { t: "Titik prioritas", view: "nasional", values: mean, labels: prio,
+          { t: "Titik Prioritas", view: "nasional", values: mean, labels: prio,
             d: <>Prioritas: <b>Kalsel & Kaltim</b>, koridor gambut Kalteng, Muaro Jambi, Papua Selatan, jalur asap Sumbar–Riau.</> },
         ];
       }
@@ -153,24 +153,36 @@ export default function PageStage({ path, cap = null }: { path: string; cap?: nu
   const s = steps[Math.min(i, steps.length - 1)];
   if (!s) return null;
 
+  const cur = Math.min(i, steps.length - 1);
   return (
-    <div className="page-stage" data-tour="stage">
-      <Stage3D values={s.values ?? {}} view={s.view ?? "nasional"} visible={s.visible ?? filt} labels={s.labels} height={400} />
-      {s.years && (
-        <span className="stage-years seg" role="group" aria-label="Tahun">
-          {(["2024", "2025", "2026"] as Year[]).map((y) => <button key={y} aria-pressed={year === y} onClick={() => setYear(y)}>{y}</button>)}
-        </span>
-      )}
-      <ol className="steps" aria-label="Langkah cerita">
-        {steps.map((st, k) => (
-          <li key={k}>
-            <button aria-current={k === i ? "step" : undefined} onClick={() => setI(k)}>
-              <span className="n">{k + 1}</span><b>{st.t}</b>
-              <span className="d">{st.d}</span>
-            </button>
-          </li>
-        ))}
-      </ol>
+    <div className="page-stage split" data-tour="stage">
+      <div className="lever">
+        <div className="lever-head">
+          <span>Langkah {cur + 1} dari {steps.length}</span>
+          <span className="lever-nav">
+            <button aria-label="Langkah sebelumnya" disabled={cur === 0} onClick={() => setI(cur - 1)}>‹</button>
+            <button aria-label="Langkah berikutnya" disabled={cur === steps.length - 1} onClick={() => setI(cur + 1)}>›</button>
+          </span>
+        </div>
+        <ol className="steps" aria-label="Langkah cerita" style={{ "--p": steps.length > 1 ? cur / (steps.length - 1) : 0 } as React.CSSProperties}>
+          {steps.map((st, k) => (
+            <li key={k}>
+              <button aria-current={k === cur ? "step" : undefined} className={k < cur ? "done" : ""} onClick={() => setI(k)}>
+                <span className="n">{k + 1}</span><b>{st.t}</b>
+                <span className="d">{st.d}</span>
+              </button>
+            </li>
+          ))}
+        </ol>
+      </div>
+      <div className="stage-pane">
+        <Stage3D values={s.values ?? {}} view={s.view ?? "nasional"} visible={s.visible ?? filt} labels={s.labels} height={460} />
+        {s.years && (
+          <span className="stage-years seg" role="group" aria-label="Tahun">
+            {(["2024", "2025", "2026"] as Year[]).map((y) => <button key={y} aria-pressed={year === y} onClick={() => setYear(y)}>{y}</button>)}
+          </span>
+        )}
+      </div>
     </div>
   );
 }

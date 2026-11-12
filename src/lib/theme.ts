@@ -132,7 +132,7 @@ PALETTES.malam = {
 PALETTES.nusantara = {
   ...DATA_LIGHT,
   ui: { side: "#0b1d2a", sideTx: "#cfdde3", sideSub: "#8aa1ad", bg: "#eef3f4", surface2: "#e4ecee", ink: "#0d1a22", inkSoft: "#4d5f69", line: "#d7e1e4", accent: "#0b5563", accent2: "#0f7a86", mapLand: "#e0e9eb",
-    card: "#FFFFFF", hi: "#2ec4b6", onHi: "#062026", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", radius: "10px",
+    card: "#FFFFFF", hi: "#2ec4b6", onHi: "#062026", fontHead: "'Fraunces Variable', Georgia", fontBody: "'Plus Jakarta Sans Variable'", fontNum: "'Fraunces Variable', Georgia", radius: "10px",
     sideActiveBg: "#2ec4b6", sideActiveTx: "#062026", sideHover: "rgba(255,255,255,0.08)", sideStrong: "#ffffff", sideEdge: "transparent" },
 };
 

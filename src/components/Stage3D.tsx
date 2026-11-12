@@ -149,7 +149,7 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
       id: "nama", data: data.filter((d) => lab.includes(d.s.code)),
       getPosition: (d) => [d.s.lon, d.s.lat, 9000 + capped(d.v) * ELEV * grow + 30000],
       getText: (d) => `${d.s.nama}${d.v != null ? ` · ${fmt(d.v, 0)}` : ""}`,
-      getSize: 13, getColor: [240, 246, 248, 255], fontWeight: 600, fontFamily: "Fira Sans, system-ui, sans-serif",
+      getSize: 13, getColor: [240, 246, 248, 255], fontWeight: 600, fontFamily: "Plus Jakarta Sans Variable, system-ui, sans-serif",
       background: true, getBackgroundColor: [10, 24, 34, 200], backgroundPadding: [6, 3],
       characterSet: "auto", billboard: true, getTextAnchor: "middle", getAlignmentBaseline: "bottom",
       updateTriggers: { getPosition: [grow, values, cap] },
@@ -158,7 +158,7 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
 
   const tip = ({ object }: PickingInfo<D>) => object && {
     html: `<b>${object.s.nama}</b><br/>${object.s.provinsi}<br/>${object.v == null ? "data tidak valid" : `PM2.5 ${fmt(object.v, 1)} ${UG} · ${ISPU_LAB[object.cat]}`}`,
-    style: { background: "rgba(10,24,34,.92)", color: "#eef4f6", fontSize: "12px", borderRadius: "8px", padding: "8px 10px", fontFamily: "Fira Sans, system-ui, sans-serif" },
+    style: { background: "rgba(10,24,34,.92)", color: "#eef4f6", fontSize: "12px", borderRadius: "8px", padding: "8px 10px", fontFamily: "Plus Jakarta Sans Variable, system-ui, sans-serif" },
   };
 
   return (
