@@ -74,7 +74,7 @@ export default function Profil() {
   return (
     <>
       <div className="scrim" onClick={() => openProfil(null)} />
-      <aside className="drawer" role="dialog" aria-label={`Profil stasiun ${s.nama}`}>
+      <aside className="drawer" data-tour="drawer" role="dialog" aria-label={`Profil stasiun ${s.nama}`}>
         <button className="drawer-close" onClick={() => openProfil(null)} aria-label="Tutup">×</button>
         <div className="q-kicker">{s.code} · {s.pulau}</div>
         <h2 style={{ fontSize: 24, marginTop: 4 }}>{s.nama}</h2>

@@ -58,7 +58,7 @@ export function useApp() {
   return c;
 }
 
-/** Warna slot stasiun pilihan (ungu, teal, tinta), atau null. */
+/** Warna slot stasiun pilihan (ungu, mawar, toska), atau null. */
 export function usePick() {
   const { pilihan } = useApp();
   return (code: string) => { const i = pilihan.indexOf(code); return i < 0 ? null : PICK_COL[i]; };

@@ -44,7 +44,7 @@ export default function StationMap({ values, visible = () => true, height = 460,
           color: !shown || v == null ? MUTED : ISPU_COL[cat], opacity: shown ? 0.9 : 0.25,
           borderColor: ring ?? "#fff", borderWidth: ring ? 3 : 1,
         },
-        label: ring ? { show: true, formatter: s.nama, position: "right" as const, color: ring, fontWeight: 700, fontSize: 12, textBorderColor: "#fff", textBorderWidth: 3 } : undefined,
+        label: ring ? { show: true, formatter: s.nama, position: "right" as const, color: C.ink, fontWeight: 700, fontSize: 12, textBorderColor: "#fff", textBorderWidth: 3 } : undefined,
         z: ring ? 10 : 2,
         s,
       };

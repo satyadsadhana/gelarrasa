@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import { Link } from "react-router-dom";
 import Chart from "../components/Chart";
-import { Card, Page, Seg } from "../components/Layout";
+import { Card, Kpi, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt, fmtDate, fmtPct, UG } from "../lib/format";
 import { apply, simulate, type Skenario } from "../lib/sim";
@@ -49,7 +49,7 @@ export default function Q6Aksi() {
   }, [d, rs, per, jenis, batas, kurangi]);
 
   if (!d || !res) return <div className="loading">Memuat data simulasi…</div>;
-  const [h, , ak] = d;
+  const [h] = d;
   const rsCode = rs === "all" ? null : h.rs[rs].code;
   const rsName = rsCode ? `${byCode[rsCode].rs_nama} (${byCode[rsCode].nama})` : "Semua 25 RS";
 
@@ -77,12 +77,16 @@ export default function Q6Aksi() {
     };
   }
 
-  const nat = ak.beban_2025_batas55;
   return (
     <Page path="/aksi"
-      answer="Tindakan tepat waktu dan tepat tempat bisa mencegah ribuan kasus per tahun."
+      kpis={<>
+        {["ISPA balita", "ISPA lansia", "Rawat napas umum", "Kematian"].map((o) => {
+          const r = res.find((x) => x.outcome === o);
+          return <Kpi key={o} k={`${o} yang bisa dicegah`} v={r ? fmt(Math.max(0, -r.selisih), 0) : "–"} unit="kasus" note={r ? `${fmtPct(r.persen, 1, true)} · ${rsCode ? byCode[rsCode].nama : "25 RS"} · ${PER[per].label}` : ""} />;
+        })}
+      </>}
       main={
-        <Card title="Simulator kebijakan: berapa kasus yang bisa dicegah?" sub={`${rsName} · ${PER[per].label}`}>
+        <Card title="Simulator kebijakan" sub={`${rsName} · ${PER[per].label}. Angka di atas ikut berubah saat batas digeser.`}>
           <div className="sim">
             <div className="sim-ctrl">
               <label>Rumah sakit / wilayah
@@ -123,7 +127,7 @@ export default function Q6Aksi() {
                   ))}
                 </tbody>
               </table>
-              <p className="disclaimer">⚠️ Estimasi berdasarkan model statistik dari data sintetis; menunjukkan arah dan besaran relatif, bukan prediksi pasti.</p>
+              <p className="disclaimer"><b>Catatan:</b> estimasi berdasarkan model statistik dari data sintetis; menunjukkan arah dan besaran relatif, bukan prediksi pasti.</p>
             </div>
           </div>
           <div className="grid-sup two" style={{ marginTop: 14 }}>
@@ -132,15 +136,10 @@ export default function Q6Aksi() {
           </div>
         </Card>
       }
-      means={[
-        <>Batas 55 {UG} di 25 RS (2025): <b>{fmt(nat["ISPA balita"].kasus, 0)} ISPA balita</b>, <b>{fmt(nat["ISPA lansia"].kasus, 0)} ISPA lansia</b>, <b>{fmt(nat["Kematian"].kasus, 0)} kematian</b>.</>,
-        <>Manfaat terbesar ada di wilayah episodik: memotong puncak asap jauh lebih efektif daripada menurunkan sedikit tiap hari.</>,
-        <>Di kota kronis (Marunda), penurunan harian 30% memberi manfaat sepanjang tahun.</>,
-      ]}
       method="kasus skenario = kasus aktual × (PM skenario / PM aktual)^(b/ln 2), b per RS (empirical Bayes shrinkage). Kardiovaskular & kematian memakai model ambang 150 µg/m³. Dihitung langsung di browser dari data harian."
       extra={
         <section style={{ marginTop: 18 }}>
-          <h2 style={{ fontSize: 18, marginBottom: 10 }}>Tujuh rekomendasi SMART</h2>
+          <h2 className="section-title" style={{ marginTop: 6 }}>Rekomendasi</h2>
           <div className="recs">
             {RECS.map((r, i) => (
               <article key={i} className="card rec">

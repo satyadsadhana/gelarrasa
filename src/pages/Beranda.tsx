@@ -6,18 +6,20 @@ import StationMap from "../components/StationMap";
 import { PAGES } from "../components/Layout";
 import { useTour } from "../components/Tour";
 import { useData } from "../lib/data";
-import { fmt, fmtDate, UG } from "../lib/format";
+import { BULAN, fmt, fmtDate, UG } from "../lib/format";
 import { dayMask, PERIODE, useApp, useStationFilter } from "../lib/state";
-import { ISPU_COL, ISPU_LAB, ISPU_ON, ispuCat } from "../lib/theme";
+import { C, ISPU_COL, ISPU_LAB, ISPU_ON, ispuCat } from "../lib/theme";
 import type { Daily, Weekly } from "../lib/types";
 
+type Monthly = { bulan: string[]; gambut: (number | null)[]; non_gambut: (number | null)[] };
+
 const COVER = [
-  ["27", "stasiun pemantau (AQMS)"], ["21", "provinsi di 5 pulau"], ["27", "rumah sakit pasangan"],
+  ["27", "stasiun pemantau (AQMS)"], ["21", "provinsi di 5 pulau"], ["27", "rumah sakit pasangan (25 masuk model dampak)"],
   ["1.018", "hari, 1 Jan 2024 – 14 Okt 2026"], ["6", "polutan + 4 variabel cuaca"], ["7", "jenis kasus kesehatan harian"],
 ];
 
 export default function Beranda() {
-  const d = useData<[Weekly, Daily]>("weekly_station", "daily");
+  const d = useData<[Weekly, Daily, Monthly]>("weekly_station", "daily", "monthly");
   const { periode, byCode, openProfil, pulau, kawasan } = useApp();
   const filt = useStationFilter();
   const tour = useTour();
@@ -78,7 +80,7 @@ export default function Beranda() {
     return { mean: n ? sum / n : null, pct55: n ? (100 * over55) / n : null, over150, n, cat, top: per[0], low: per[per.length - 1], stations: per.length };
   }, [d, periode, filt, byCode]);
 
-  if (!d || !stats) return <div className="loading">Memuat…</div>;
+  if (!d || !stats) return <div className="loading">Memuat ringkasan dan peta stasiun…</div>;
   const label = pos == null ? `rata-rata ${PERIODE[periode].label}` : `minggu ${fmtDate(weeks[range[pos]])}`;
   const scope = [PERIODE[periode].label, pulau || "semua pulau", kawasan || "semua kawasan"].join(" · ");
 
@@ -93,11 +95,27 @@ export default function Beranda() {
     })),
   };
 
+  const mon = d[2];
+  const monLbl = mon.bulan.map((b) => `${BULAN[Number(b.slice(5, 7)) - 1]} ${b.slice(2, 4)}`);
+  const monOpt: EChartsOption = {
+    tooltip: { trigger: "axis", valueFormatter: (v: any) => (v == null ? "–" : `${fmt(v)} ${UG}`) },
+    legend: { top: 0, data: ["Kawasan gambut", "Kawasan lain"] },
+    grid: { left: 8, right: 20, top: 30, bottom: 24 },
+    xAxis: { type: "category", data: monLbl, axisLabel: { fontSize: 10.5, interval: 2 } },
+    yAxis: { type: "value", name: UG },
+    series: [
+      { name: "Kawasan gambut", type: "line", symbol: "none", data: mon.gambut, lineStyle: { width: 2.5 }, itemStyle: { color: C.gambut }, areaStyle: { color: C.gambut, opacity: 0.08 },
+        markPoint: { symbol: "circle", symbolSize: 7, label: { show: true, position: "left", formatter: (q: any) => `${fmt(q.value, 0)}`, color: C.ink, fontSize: 11, fontWeight: 600 }, data: [{ type: "max" }] } as any },
+      { name: "Kawasan lain", type: "line", symbol: "none", data: mon.non_gambut, lineStyle: { width: 2 }, itemStyle: { color: C.other } },
+      { name: "Baku mutu harian", type: "line", data: [], markLine: { silent: true, symbol: "none", lineStyle: { color: C.ink, type: "dashed" }, label: { formatter: "55 · baku mutu harian", position: "insideEndTop", color: C.ink, fontSize: 10.5 }, data: [{ yAxis: 55 }] } } as any,
+    ],
+  };
+
   return (
     <main>
       <section className="hero">
         <h1>Kualitas Udara & Kesehatan di 27 Wilayah Indonesia</h1>
-        <p>Data pemantauan udara per jam dan kasus rumah sakit harian, 1 Januari 2024 – 14 Oktober 2026. Pilih periode, pulau, atau kawasan di bar atas; semua angka di halaman ini ikut berubah.</p>
+        <p>Data pemantauan udara per jam dan kasus rumah sakit harian, 1 Januari 2024 – 14 Oktober 2026. Pilih periode, pulau, atau kawasan di bar atas; angka ringkasan, peta, dan sebaran ISPU ikut berubah.</p>
       </section>
       <div className="kpis row">
         <div className="kpi"><span className="k">Rata-rata PM2.5</span><div className="v">{fmt(stats.mean)} <small>{UG}</small></div><p>baku mutu tahunan nasional 15 · WHO 5</p></div>
@@ -113,7 +131,7 @@ export default function Beranda() {
         </div>
       </div>
       <div className="home">
-        <section className="card">
+        <section className="card" data-tour="map-card">
           <div className="card-head">
             <div>
               <h2>Peta stasiun · PM2.5 {label}</h2>
@@ -138,6 +156,7 @@ export default function Beranda() {
           </section>
           <section className="card">
             <h2>Cakupan data</h2>
+            <p className="sub">Seluruh dataset; tidak ikut filter.</p>
             <dl className="cover">{COVER.map(([v, l]) => <div key={l}><dt>{v}</dt><dd>{l}</dd></div>)}</dl>
             <div className="cta" style={{ marginTop: 12 }}>
               <button className="btn primary" onClick={() => tour.start()}>▶ Tur 3 menit</button>
@@ -146,12 +165,16 @@ export default function Beranda() {
           </section>
         </aside>
       </div>
-      <h2 className="section-title">Jelajahi</h2>
-      <div className="findings">
+      <section className="card" style={{ marginTop: "var(--gap)" }}>
+        <div className="card-head"><div><h2>Rata-rata PM2.5 bulanan, 2024–2026</h2><p className="sub">Semua stasiun kawasan gambut dibandingkan stasiun lain. Oktober 2026 sampai tanggal 14.</p></div></div>
+        <Chart option={monOpt} height={260} ariaLabel="Rata-rata PM2.5 bulanan gambut dan kawasan lain" />
+      </section>
+      <h2 className="section-title">Isi halaman lain</h2>
+      <ul className="explore">
         {PAGES.slice(1).map((p) => (
-          <Link key={p.path} to={p.path} className="finding"><span className="tag">{p.icon} {p.short}</span><p>{p.desc}</p></Link>
+          <li key={p.path}><Link to={p.path}>{p.short}</Link><span>{p.desc}</span></li>
         ))}
-      </div>
+      </ul>
     </main>
   );
 }

@@ -67,7 +67,7 @@ export default function TimeSeries({ daily }: { daily: Daily }) {
       sampling: res === "hari" ? ("lttb" as const) : undefined,
       lineStyle: { width: res === "hari" ? 1.4 : 2.6, color: PICK_COL[i] }, itemStyle: { color: PICK_COL[i] },
       emphasis: { focus: "series" as const, lineStyle: { width: res === "hari" ? 2 : 3.4 } },
-      endLabel: { show: true, formatter: "{a}", color: PICK_COL[i], fontWeight: 700, fontSize: 12, textBorderColor: "#fff", textBorderWidth: 3 },
+      endLabel: { show: true, formatter: "{a}", color: C.ink, fontWeight: 700, fontSize: 12, textBorderColor: "#fff", textBorderWidth: 3 },
       data: idx.map((ids) => mean(daily.pm25[c], ids, MIN_DAYS[res])),
       z: 5 - i,
     }));

@@ -1,11 +1,11 @@
 import { useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
-import { Card, Page, Seg } from "../components/Layout";
+import { Card, Kpi, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt, fmtPct, UG } from "../lib/format";
 import { useApp, usePick, usePickSymbol, useStationFilter } from "../lib/state";
-import { C, GAMBUT_COL, MUTED, RAMP, TIPE_COL } from "../lib/theme";
+import { C, GAMBUT_COL, MUTED, TIER, TIPE_COL } from "../lib/theme";
 import type { Summary } from "../lib/types";
 
 type Annual = { per_stasiun: { code: string; tahun: number; rata2: number; lengkap: boolean; lampaui_PP22: boolean }[]; tangga_who: Record<string, Record<string, number>>; urutan_tangga: string[] };
@@ -13,7 +13,7 @@ type Trend = { kelompok: Record<string, Record<string, number>>; kelompok_musim:
 type Iku = { data: { code: string; tahun: number; IKU: number; kategori_IKU: string; pm25: number }[]; buta_asap_2025: string[]; rho_2025: number };
 
 /** Tangga WHO: makin gelap = makin jauh dari target. */
-const TIER_COL = [RAMP[5], RAMP[4], RAMP[3], RAMP[2], RAMP[1], RAMP[0]];
+const TIER_COL = [TIER[5], TIER[4], TIER[3], TIER[2], TIER[1], TIER[0]];
 const TIER_ON = ["#fff", "#fff", "#fff", C.ink, C.ink, C.ink];
 
 export default function Q1Kondisi() {
@@ -30,8 +30,8 @@ export default function Q1Kondisi() {
     const tipes = Object.keys(TIPE_COL);
     return {
       tooltip: { formatter: (p: any) => p.data?.s ? `<b>${byCode[p.data.s.code].nama}</b> (${p.data.s.code})<br/>${p.data.s.tipe}<br/>Rata-rata: <b>${fmt(p.value[0])}</b> ${UG}<br/>Persentil 95: <b>${fmt(p.value[1])}</b> ${UG}` : "" },
-      legend: { bottom: 0, data: tipes },
-      grid: { left: 10, right: 30, top: 20, bottom: 40 },
+      legend: { bottom: 0, data: tipes, itemGap: 10, textStyle: { fontSize: 11 } },
+      grid: { left: 10, right: 30, top: 20, bottom: 74 },
       xAxis: { type: "log", name: `Rata-rata PM2.5 harian (${UG}) → beban kronis`, nameLocation: "middle", nameGap: 28, min: 5, max: 200 },
       yAxis: { type: "log", name: "Persentil 95 → keparahan episode", nameLocation: "middle", nameGap: 40, min: 10, max: 1000 },
       series: tipes.map((t) => ({
@@ -41,7 +41,7 @@ export default function Q1Kondisi() {
           return {
             value: [s.rata2_pm25, s.p95_pm25], s, symbolSize: ring ? 18 : 12, symbol: sym(s.code) ?? "circle",
             itemStyle: { color: on ? TIPE_COL[t] : MUTED, borderColor: ring ?? "#fff", borderWidth: ring ? 3 : 1, opacity: on ? 1 : 0.4 },
-            label: { show: !!ring || s.code === "SM2-01", formatter: byCode[s.code].nama, position: "right", fontSize: 12, fontWeight: 700, color: ring ?? C.ink, textBorderColor: "#fff", textBorderWidth: 3 },
+            label: { show: !!ring || s.code === "SM2-01", formatter: byCode[s.code].nama, position: "right", fontSize: 12, fontWeight: 700, color: C.ink, textBorderColor: "#fff", textBorderWidth: 3 },
           };
         }),
         markLine: t === tipes[0] ? {
@@ -53,7 +53,7 @@ export default function Q1Kondisi() {
     };
   }, [d, acuan, pick, filt, byCode]);
 
-  if (!d || !quad) return <div className="loading">Memuat…</div>;
+  if (!d || !quad) return <div className="loading">Memuat data kualitas udara…</div>;
   const [summ, ann, trend, iku] = d;
   const yrs = ["2024", "2025"];
 
@@ -72,8 +72,8 @@ export default function Q1Kondisi() {
     legend: { bottom: 0 }, grid: { left: 8, right: 10, top: 6, bottom: 40 },
     xAxis: { type: "value", max: 24 }, yAxis: { type: "category", data: yrs, inverse: true },
     series: [true, false].map((lamp) => ({
-      name: lamp ? "Melampaui 15 µg/m³" : "Memenuhi", type: "bar", stack: "a", itemStyle: { color: lamp ? RAMP[4] : RAMP[1] },
-      label: { show: true, color: lamp ? "#fff" : C.ink, fontWeight: 700 },
+      name: lamp ? "Melampaui 15 µg/m³" : "Memenuhi", type: "bar", stack: "a", itemStyle: { color: lamp ? TIER[4] : TIER[1] },
+      label: { show: true, color: lamp ? "#fff" : C.ink, fontWeight: 700 }, barWidth: 26,
       data: yrs.map((y) => ann.per_stasiun.filter((r) => String(r.tahun) === y && r.lengkap && r.lampaui_PP22 === lamp).length),
     })),
   };
@@ -112,32 +112,59 @@ export default function Q1Kondisi() {
     }],
   };
 
+  // Peringkat rata-rata tahunan 2025 per stasiun (hanya tahun yang lengkap ≥75% hari).
+  const rank = ann.per_stasiun.filter((r) => r.tahun === 2025 && r.lengkap).sort((a, b) => a.rata2 - b.rata2);
+  const refLine = acuan === "who" ? 35 : 15;
+  const rankOpt: EChartsOption = {
+    tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, formatter: (ps: any) => { const r = rank[ps[0].dataIndex]; return `<b>${byCode[r.code].nama}</b> · ${byCode[r.code].kelompok}<br/>Rata-rata 2025: <b>${fmt(r.rata2)}</b> ${UG}`; } },
+    grid: { left: 8, right: 70, top: 26, bottom: 24 },
+    xAxis: { type: "value", name: UG, nameLocation: "end" },
+    yAxis: { type: "category", data: rank.map((r) => byCode[r.code].nama), axisLabel: { fontSize: 11.5, color: C.ink }, axisTick: { show: false } },
+    series: [{
+      type: "bar", barWidth: 12,
+      data: rank.map((r) => {
+        const on = filt(r.code), ring = pick(r.code);
+        return { value: r.rata2, code: r.code, itemStyle: { color: !on ? MUTED : byCode[r.code].gambut ? C.gambut : C.other, borderRadius: [0, 4, 4, 0], borderColor: ring ?? undefined, borderWidth: ring ? 2 : 0 } };
+      }),
+      label: { show: true, position: "right", formatter: (p: any) => fmt(p.value), fontSize: 11, color: C.inkSoft },
+      markLine: { silent: true, symbol: "none", lineStyle: { color: C.ink, type: "dashed", width: 1.5 },
+        label: { formatter: acuan === "who" ? "WHO IT-1 · 35" : "Baku mutu tahunan · 15", position: "end", color: C.ink, fontSize: 11, fontWeight: 600 },
+        data: [{ xAxis: refLine }] },
+    }],
+  };
+  const above = rank.filter((r) => r.rata2 > refLine).length;
+  const blindN = iku.buta_asap_2025.length;
+  const tg = trend.kelompok;
+  const pct = (g: string) => (tg[g]["2026"] / tg[g]["2024"] - 1) * 100;
+
   return (
     <Page path="/kondisi"
-      answer="Hampir semua wilayah melampaui baku mutu tahunan, dan pemburukan terjadi hampir seluruhnya di kawasan gambut."
+      kpis={<>
+        <Kpi k="Stasiun melampaui baku mutu tahunan" v={`${fmt(ann.per_stasiun.filter((r) => r.tahun === 2025 && r.lengkap && r.lampaui_PP22).length, 0)} dari ${rank.length}`} note={`2025 · batas 15 ${UG}`} />
+        <Kpi k="Belum capai target WHO IT-1 (35)" v={`${ann.tangga_who["2024"][ann.urutan_tangga[0]]} → ${ann.tangga_who["2025"][ann.urutan_tangga[0]]}`} unit="stasiun" note="2024 → 2025" />
+        <Kpi k="Perubahan PM2.5 kawasan gambut" v={fmtPct(pct("Gambut"), 0, true)} note={`non-gambut ${fmtPct(pct("Non-gambut"), 0, true)} · 1 Jan–14 Okt, 2024 → 2026`} />
+        <Kpi k={'IKU "Baik" padahal PM2.5 > 35'} v={fmt(blindN, 0)} unit="stasiun" note="IKU hanya dihitung dari NO₂ & SO₂" />
+      </>}
       main={
-        <Card title="Rata-rata bisa mirip, perilakunya berbeda" sub="Tiap titik = satu stasiun (skala log). Warna = tipe hasil clustering pola waktu (M1). Klik titik untuk profil.">
-          <Chart option={quad} height={420} onClick={(p: any) => p.data?.s && openProfil(p.data.s.code)} ariaLabel="Kuadran kronis vs episodik" />
+        <Card title={`Rata-rata PM2.5 per stasiun, 2025`} sub={`Oranye = kawasan gambut, abu = lainnya. ${above} dari ${rank.length} stasiun di kanan garis ${acuan === "who" ? "WHO IT-1" : "baku mutu"}. Ganti acuan di bar atas.`}>
+          <Chart option={rankOpt} height={Math.max(420, rank.length * 22)} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} ariaLabel="Peringkat rata-rata PM2.5 per stasiun" />
         </Card>
       }
-      means={[
-        <><b>21 dari 24</b> stasiun melampaui baku mutu tahunan 15 {UG} (2024 & 2025).</>,
-        <>PM2.5 adalah pencemar kritis di <b>99,6%</b> hari; gas tidak pernah melewati kategori Sedang.</>,
-        <>Pemburukan gambut terjadi saat musim asap; <b>Samarinda</b> pengecualian: memburuk di luar musim asap (+61%).</>,
-      ]}
-      method="Rata-rata tahunan hanya sah bila ≥75% hari punya data. Tren memakai periode 1 Jan–14 Okt tiap tahun (BJB-01 & MER-01 dikeluarkan karena cakupan <75%)."
+      method="Rata-rata tahunan hanya sah bila ≥75% hari punya data. Tren memakai periode 1 Jan–14 Okt tiap tahun (BJB-01 & MER-01 dikeluarkan karena cakupan <75%). IKU dihitung ulang dari NO₂ & SO₂ sesuai Permen LHK 27/2021."
       supports={[
-        <Card key="a" title={acuan === "who" ? "Gagal target WHO paling longgar: 12 → 16" : "Melampaui baku mutu tahunan: 21 dari 24"}
-          sub={acuan === "who" ? "Tangga target antara WHO 2021 (IT-1 = 35 µg/m³)" : "PP 22/2021: PM2.5 tahunan 15 µg/m³ · ganti Acuan ke WHO di atas"}>
-          <Chart option={ladder} height={230} />
+        <Card key="q" title="Rata-rata dan lonjakan per stasiun" sub="Skala log. Warna = tipe pola waktu: oranye episodik (asap musiman), slate kronis.">
+          <Chart option={quad} height={340} onClick={(p: any) => p.data?.s && openProfil(p.data.s.code)} ariaLabel="Rata-rata vs persentil 95" />
         </Card>,
-        <Card key="b" title="Gambut +102%, non-gambut +3%" sub="Rata-rata PM2.5 1 Jan–14 Okt per kelompok"
+        <Card key="b" title="PM2.5 per kelompok kawasan, 1 Jan–14 Okt" sub="Persentase di ujung garis = perubahan 2024 → 2026"
           right={<Seg value={musim} onChange={setMusim} options={[["semua", "Semua"], ["Jan–Jun", "Luar musim"], ["Jul–14 Okt", "Musim asap"]]} />}>
-          <Chart option={trendOpt} height={230} />
+          <Chart option={trendOpt} height={300} />
         </Card>,
-        <Card key="c" title="IKU resmi tidak melihat asap" sub={`${iku.buta_asap_2025.length} stasiun ber-IKU "Baik" padahal PM2.5 > 35 (titik gelap)`}
-          note="IKU (Permen LHK 27/2021) hanya dihitung dari NO₂ & SO₂.">
-          <Chart option={ikuOpt} height={230} />
+        <Card key="a" title={acuan === "who" ? "Stasiun menurut target antara WHO" : "Stasiun terhadap baku mutu tahunan"}
+          sub={acuan === "who" ? "Makin gelap = makin jauh dari target 5 µg/m³" : "PP 22/2021 · 15 µg/m³ · stasiun dengan data ≥75% hari"}>
+          <Chart option={ladder} height={220} />
+        </Card>,
+        <Card key="c" title="IKU 2025 dibandingkan PM2.5" sub={`Titik slate = IKU "Baik" tetapi PM2.5 tahunan > 35 ${UG}`}>
+          <Chart option={ikuOpt} height={220} />
         </Card>,
       ]}
       extra={

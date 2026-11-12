@@ -3,15 +3,16 @@ import { Link, NavLink, useLocation } from "react-router-dom";
 import { KAWASAN, PERIODE, PULAU, useApp, type FilterKey, type PeriodeKey } from "../lib/state";
 import { useTour } from "./Tour";
 import StationPicker from "./StationPicker";
+import NavIcon from "./NavIcon";
 
 export const PAGES = [
-  { path: "/", short: "Ringkasan", icon: "◎", label: "Gambaran umum data", desc: "Gambaran umum 27 stasiun pemantau dan 27 rumah sakit, 1 Jan 2024 – 14 Okt 2026.", filters: ["periode", "pulau", "kawasan"] },
-  { path: "/kondisi", short: "Kualitas Udara", icon: "▤", label: "Baku mutu, ISPU, IKU & tren", desc: "Rata-rata dan lonjakan PM2.5 tiap stasiun dibandingkan baku mutu nasional, target WHO, dan IKU, beserta trennya.", filters: ["pulau", "kawasan", "acuan"] },
-  { path: "/waktu", short: "Pola Waktu", icon: "◷", label: "Harian, musiman, episode", desc: "Pergerakan PM2.5 dari hari ke hari, pola musiman, kalender risiko, dan pola jam.", filters: ["periode", "pulau", "kawasan"] },
-  { path: "/pemicu", short: "Faktor Pemicu", icon: "⚑", label: "Musim, lalu lintas, cuaca", desc: "Sumber variasi PM2.5: lokasi, musim, lalu lintas, cuaca, dan arah angin.", filters: ["pulau", "kawasan"] },
-  { path: "/dampak", short: "Dampak Kesehatan", icon: "✚", label: "PM2.5 & kasus rumah sakit", desc: "Hubungan PM2.5 harian dengan kasus ISPA, asma, PPOK, kardiovaskular, dan kematian di 25 rumah sakit.", filters: [] },
-  { path: "/jaringan", short: "Jaringan Pemantauan", icon: "⌖", label: "Kualitas data stasiun", desc: "Keandalan data tiap stasiun, penempatan stasiun, dan prioritas perbaikan.", filters: ["pulau", "kawasan"] },
-  { path: "/aksi", short: "Simulasi & Rekomendasi", icon: "⇄", label: "Skenario kebijakan", desc: "Simulasi jumlah kasus bila PM2.5 dibatasi atau dikurangi, dan rekomendasi tindakan.", filters: [] },
+  { path: "/", short: "Ringkasan", nav: "Ringkasan", label: "Gambaran umum data", desc: "Gambaran umum 27 stasiun pemantau dan 27 rumah sakit, 1 Jan 2024 – 14 Okt 2026.", filters: ["periode", "pulau", "kawasan"] },
+  { path: "/kondisi", short: "Kualitas Udara", nav: "Udara", label: "Baku mutu, ISPU, IKU & tren", desc: "Rata-rata dan lonjakan PM2.5 tiap stasiun dibandingkan baku mutu nasional, target WHO, dan IKU, beserta trennya.", filters: ["pulau", "kawasan", "acuan"] },
+  { path: "/waktu", short: "Pola Waktu", nav: "Waktu", label: "Harian, musiman, episode", desc: "Pergerakan PM2.5 dari hari ke hari, pola musiman, awal musim risiko, dan pola jam.", filters: ["periode", "pulau", "kawasan"] },
+  { path: "/pemicu", short: "Faktor Pemicu", nav: "Pemicu", label: "Musim, lalu lintas, cuaca", desc: "Sumber variasi PM2.5: lokasi, musim, lalu lintas, cuaca, dan arah angin.", filters: ["pulau", "kawasan"] },
+  { path: "/dampak", short: "Dampak Kesehatan", nav: "Dampak", label: "PM2.5 & kasus rumah sakit", desc: "Hubungan PM2.5 harian dengan kasus ISPA, asma, PPOK, kardiovaskular, dan kematian di 25 rumah sakit.", filters: [] },
+  { path: "/jaringan", short: "Jaringan Pemantauan", nav: "Jaringan", label: "Kualitas data stasiun", desc: "Keandalan data tiap stasiun, penempatan stasiun, dan prioritas perbaikan.", filters: ["pulau", "kawasan"] },
+  { path: "/aksi", short: "Simulasi & Rekomendasi", nav: "Simulasi", label: "Skenario kebijakan", desc: "Simulasi jumlah kasus bila PM2.5 dibatasi atau dikurangi, dan rekomendasi tindakan.", filters: [] },
 ] as const;
 
 function Logo() {
@@ -25,20 +26,21 @@ function Sidebar() {
   const tour = useTour();
   return (
     <aside className="side">
-      <Link to="/" className="brand" aria-label="Napas Nusantara, ke Beranda">
+      <Link to="/" className="brand" aria-label="ASAP, ke Ringkasan">
         <Logo />
-        <span><b>Napas Nusantara</b><small>Udara & kesehatan · 27 wilayah · 2024–2026</small></span>
+        <span><b>ASAP</b><small>Udara & kesehatan · 27 wilayah · 2024–2026</small></span>
       </Link>
       <nav className="side-nav" aria-label="Halaman">
         {PAGES.map((p) => (
           <NavLink key={p.path} to={p.path} end title={p.short}>
-            <span className="q" aria-hidden>{p.icon}</span>
+            <span className="q"><NavIcon path={p.path} /></span>
             <span className="t"><b>{p.short}</b><small>{p.label}</small></span>
+            <span className="n" aria-hidden>{p.nav}</span>
           </NavLink>
         ))}
       </nav>
       <div className="side-foot">
-        <NavLink to="/tentang" className="side-link">ⓘ Tentang Data</NavLink>
+        <NavLink to="/tentang" className="side-link">Tentang Data</NavLink>
         <button className="tour-btn" onClick={() => tour.start()}>▶ Mulai tur</button>
       </div>
     </aside>
@@ -49,7 +51,8 @@ function FilterBar() {
   const { pathname } = useLocation();
   const app = useApp();
   const page = PAGES.find((p) => p.path === pathname);
-  const on = (k: FilterKey) => !page || (page.filters as readonly string[]).includes(k);
+  // Tentang Data tidak dipengaruhi filter apa pun, jadi semua filter disembunyikan di sana.
+  const on = (k: FilterKey) => (pathname === "/tentang" ? false : !page || (page.filters as readonly string[]).includes(k));
   const off = "Filter ini tidak berlaku di halaman ini";
   const active: { k: string; label: string }[] = [];
   if (app.periode !== "semua" && on("periode")) active.push({ k: "periode", label: PERIODE[app.periode].label });
@@ -77,7 +80,7 @@ function FilterBar() {
             {KAWASAN.map((p) => <option key={p}>{p}</option>)}
           </select>
         </label>
-        <label title={on("acuan") ? "Acuan pembanding" : off}>Acuan
+        <label title={on("acuan") ? "Acuan pembanding" : off} data-tour="acuan">Acuan
           <span className="seg" role="group">
             {(["nasional", "who"] as const).map((a) => (
               <button key={a} aria-pressed={app.acuan === a} disabled={!on("acuan")} onClick={() => app.set("acuan", a === "nasional" ? null : a)}>
@@ -87,7 +90,7 @@ function FilterBar() {
           </span>
         </label>
         </div>
-        <StationPicker compact />
+        <div data-tour="picker"><StationPicker compact /></div>
         {active.length > 0 && (
           <div className="chips" aria-label="Filter aktif">
             {active.map((a) => (
@@ -116,34 +119,45 @@ export default function Layout({ children }: { children: ReactNode }) {
 }
 
 type PageProps = {
-  path: string; title?: string; answer: ReactNode; main: ReactNode; means: ReactNode[]; method?: ReactNode;
+  path: string; main: ReactNode; method?: ReactNode; kpis?: ReactNode;
   supports?: ReactNode[]; extra?: ReactNode;
 };
-export function Page({ path, answer, main, means, method, supports, extra }: PageProps) {
+/** Kerangka halaman topik: judul + satu kalimat, (opsional) deret angka, grafik utama selebar halaman, grafik pendukung. */
+export function Page({ path, main, method, kpis, supports, extra }: PageProps) {
   const i = PAGES.findIndex((p) => p.path === path);
   const p = PAGES[i], prev = PAGES[i - 1], next = PAGES[i + 1] ?? null;
   return (
     <main>
       <div className="q-head">
         <h1 className="page-title">{p.short}</h1>
-        <p className="page-desc">{p.desc}</p>
+        <p className="page-desc">{p.desc}{method && <MethodNote>{method}</MethodNote>}</p>
       </div>
-      <div className="grid-main">
-        <div data-tour="main">{main}</div>
-        <aside className="card means" data-tour="answer">
-          <h2>Temuan utama</h2>
-          <p className="lead">{answer}</p>
-          <ul>{means.map((m, k) => <li key={k}>{m}</li>)}</ul>
-          {method && <div className="method">ⓘ {method}</div>}
-        </aside>
-      </div>
-      {supports && <div className={`grid-sup ${supports.length === 2 ? "two" : ""}`}>{supports}</div>}
+      {kpis && <div data-tour="kpis" className="kpis row" style={{ marginTop: 0, marginBottom: "var(--gap)" }}>{kpis}</div>}
+      <div data-tour="main">{main}</div>
+      {supports && <div className={`grid-sup ${supports.length % 2 === 0 ? "two" : ""}`}>{supports}</div>}
       {extra}
       <nav className="pager">
         {prev ? <Link to={prev.path}>← <b>{prev.short}</b></Link> : <span />}
         {next ? <Link to={next.path}><b>{next.short}</b> →</Link> : <Link to="/tentang"><b>Tentang Data</b> →</Link>}
       </nav>
     </main>
+  );
+}
+
+/** Catatan cara hitung: tersembunyi di balik tombol kecil supaya halaman tidak penuh teks. */
+export function MethodNote({ children }: { children: ReactNode }) {
+  return (
+    <details className="method-note">
+      <summary>Cara hitung</summary>
+      <div>{children}</div>
+    </details>
+  );
+}
+
+/** Kartu angka kecil: label, nilai, dan satu baris konteks. */
+export function Kpi({ k, v, unit, note }: { k: ReactNode; v: ReactNode; unit?: ReactNode; note?: ReactNode }) {
+  return (
+    <div className="kpi"><span className="k">{k}</span><div className="v">{v}{unit && <small> {unit}</small>}</div>{note && <p>{note}</p>}</div>
   );
 }
 

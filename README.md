@@ -1,8 +1,7 @@
-# Napas Nusantara
+# ASAP
 
 Dashboard interaktif kualitas udara dan dampaknya pada kesehatan masyarakat di 27 wilayah Indonesia. Dibuat untuk cabang **Dashboard Analysis Gelar Rasa 2026** (Preliminary Round), dengan tema *"From Roots to Clarity, Revealing Meaningful Insight Through Data"*.
 
-> Nama "Napas Nusantara" masih sementara.
 
 ## Isi dashboard
 

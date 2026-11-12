@@ -25,7 +25,7 @@ function ScrollTop() {
 
 function Shell() {
   const d = useData<[StationsFile]>("stations");
-  if (!d) return <div className="loading">Memuat data…</div>;
+  if (!d) return <div className="loading">Memuat daftar stasiun…</div>;
   return (
     <StateProvider stations={d[0].stasiun}>
       <TourProvider>

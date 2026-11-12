@@ -2,11 +2,11 @@ import { useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
 import TimeSeries from "../components/TimeSeries";
-import { Card, Page, Seg } from "../components/Layout";
+import { Card, Kpi, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { BULAN, fmt, fmtDate, UG } from "../lib/format";
 import { useApp } from "../lib/state";
-import { C, RAMP, YEAR_COL } from "../lib/theme";
+import { C, YEAR_COL } from "../lib/theme";
 import type { Daily, StationsFile } from "../lib/types";
 
 type Monthly = { bulan: string[]; gambut: (number | null)[]; non_gambut: (number | null)[] };
@@ -20,7 +20,7 @@ export default function Q2Waktu() {
   const { byCode } = useApp();
   const [pol, setPol] = useState<"pm25" | "gas">("pm25");
 
-  if (!d) return <div className="loading">Memuat…</div>;
+  if (!d) return <div className="loading">Memuat data harian dan musiman…</div>;
   const [daily, , mon, cal, diu, eps] = d;
 
   const seasonal: EChartsOption = {
@@ -30,7 +30,8 @@ export default function Q2Waktu() {
     series: [
       ...["2024", "2025", "2026"].map((y) => ({
         name: `Gambut ${y}${y === "2026" ? " (Okt s.d. 14)" : ""}`, type: "line" as const, smooth: true, symbolSize: 5,
-        lineStyle: { width: y === "2026" ? 3.5 : 2.2 }, itemStyle: { color: YEAR_COL[y] },
+        lineStyle: { width: y === "2026" ? 3 : 2 }, itemStyle: { color: YEAR_COL[y] },
+        markPoint: { symbol: "circle", symbolSize: 7, label: { show: true, position: "top" as const, formatter: (q: any) => fmt(q.value, 0), color: C.ink, fontSize: 11, fontWeight: 600 }, data: [{ type: "max" as const }] } as any,
         data: BULAN.map((_, m) => mon.gambut[mon.bulan.indexOf(`${y}-${String(m + 1).padStart(2, "0")}`)] ?? null),
       })),
       { name: "Non-gambut (rata-rata 3 tahun)", type: "line", lineStyle: { type: "dashed", width: 2 }, itemStyle: { color: C.other }, symbol: "none",
@@ -38,18 +39,16 @@ export default function Q2Waktu() {
     ],
   };
 
-  const calData: [number, number, number | null][] = [];
-  cal.pct_tidak_sehat.forEach((r, yi) => r.forEach((v, wi) => calData.push([wi, yi, v])));
   const calOpt: EChartsOption = {
-    tooltip: { formatter: (q: any) => `${cal.tahun[q.value[1]]}, minggu ke-${cal.minggu[q.value[0]]}<br/><b>${fmt(q.value[2], 0)}%</b> hari-stasiun gambut > 55,4 ${UG}` },
-    grid: { left: 8, right: 10, top: 6, bottom: 56 },
-    xAxis: { type: "category", data: cal.minggu.map(String), name: "minggu ke-", nameLocation: "middle", nameGap: 22, axisLabel: { interval: 3, fontSize: 10 } },
-    yAxis: { type: "category", data: cal.tahun.map(String) },
-    visualMap: { min: 0, max: 100, orient: "horizontal", left: "center", bottom: 0, itemHeight: 120, itemWidth: 10, text: ["100%", "0%"], inRange: { color: RAMP }, textStyle: { fontSize: 11, color: C.inkSoft } },
-    series: [{
-      type: "heatmap", data: calData,
-      markLine: { symbol: "none", silent: true, lineStyle: { color: C.pick, width: 1.5 }, label: { formatter: "mg 31", fontSize: 11, color: C.pick, fontWeight: 700 }, data: [{ xAxis: "31" }] },
-    }],
+    tooltip: { trigger: "axis", valueFormatter: (v: any) => (v == null ? "–" : `${fmt(v, 0)}% hari-stasiun`) },
+    legend: { bottom: 0 }, grid: { left: 8, right: 14, top: 22, bottom: 40 },
+    xAxis: { type: "category", data: cal.minggu.map(String), name: "minggu ke-", nameLocation: "middle", nameGap: 24, axisLabel: { interval: 3, fontSize: 10.5 } },
+    yAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } },
+    series: cal.tahun.map((y, yi) => ({
+      name: String(y), type: "line" as const, symbol: "none", smooth: true, data: cal.pct_tidak_sehat[yi],
+      lineStyle: { width: y === 2026 ? 2.5 : 2 }, itemStyle: { color: YEAR_COL[String(y)] },
+      markLine: yi === 0 ? { silent: true, symbol: "none", lineStyle: { color: C.ink, type: "dashed" as const }, label: { formatter: "mg 31 · akhir Juli", color: C.ink, fontSize: 10.5, position: "insideEndTop" as const }, data: [{ xAxis: "31" }] } : undefined,
+    })),
   };
 
   const kel = Object.keys(diu.kelompok_pm25_rel);
@@ -69,26 +68,31 @@ export default function Q2Waktu() {
          { name: "NO₂", type: "line", symbol: "none", smooth: true, data: diu.no2_rel, itemStyle: { color: C.other }, lineStyle: { width: 2.5, type: "dashed" } }],
   };
 
+  // Hari episode asap berat hanya di stasiun kawasan gambut (sama dengan laporan; Samarinda kawasan industri dipisah).
+  const gambutHari = (y: number) => eps.episode.filter((e) => byCode[e.code]?.gambut && Number(e.mulai.slice(0, 4)) === y).reduce((a, e) => a + e.hari, 0);
+  const peak = (y: string) => Math.max(...mon.bulan.map((b, k) => (b.startsWith(y) ? mon.gambut[k] ?? 0 : 0)));
+  const longest = eps.episode.filter((e) => byCode[e.code]?.gambut).sort((a, b) => b.hari - a.hari)[0];
+
   return (
     <Page path="/waktu"
-      answer="Kawasan gambut melonjak tiap Agustus–Oktober, dan musim asapnya makin panjang dan pekat tiap tahun; kota padat tinggi sepanjang tahun."
+      kpis={<>
+        <Kpi k="Puncak bulanan kawasan gambut" v={`${fmt(peak("2024"), 0)} → ${fmt(peak("2025"), 0)} → ${fmt(peak("2026"), 0)}`} unit={UG} note="2024 → 2025 → 2026" />
+        <Kpi k="Hari asap berat di kawasan gambut" v={`${gambutHari(2024)} → ${gambutHari(2025)} → ${gambutHari(2026)}`} unit="hari" note={`episode ≥3 hari > 150 ${UG}`} />
+        <Kpi k="Episode terpanjang" v={`${longest.hari} hari`} note={`${byCode[longest.code].nama}, ${fmtDate(longest.mulai)} – ${fmtDate(longest.selesai)}`} />
+        <Kpi k="Musim risiko dimulai" v={`minggu ke-${Math.min(...Object.values(cal.minggu_awal))}`} note={`akhir Juli · ${Object.entries(cal.minggu_awal).map(([y, w]) => `${y}: mg ${w}`).join(" · ")}`} />
+      </>}
       main={<TimeSeries daily={daily} />}
-      means={[
-        <>Hari asap berat (episode ≥3 hari &gt; 150 {UG}): <b>{eps.per_tahun.map((r) => r.total_hari).join(" → ")} hari</b> (2024 → 2026).</>,
-        <>Episode terpanjang: <b>{eps.episode[0].hari} hari</b> di {byCode[eps.episode[0].code].nama} ({fmtDate(eps.episode[0].mulai)} – {fmtDate(eps.episode[0].selesai)}), masih berlangsung saat data berakhir.</>,
-        <>Akhir pekan tidak berbeda dari hari kerja (median selisih 0,03%).</>,
-      ]}
-      method="Titik harian sah bila ≥18 jam valid; titik mingguan bila ≥4 hari valid; titik bulanan bila ≥15 hari valid. Garis putus = data tidak valid. Rata-rata semua stasiun tanpa JMB-02 & MER-01."
+      method="Titik harian sah bila ≥18 jam valid; mingguan bila ≥4 hari valid; bulanan bila ≥15 hari valid. Garis putus = data tidak valid. Episode asap berat = ≥3 hari berturut-turut PM2.5 harian > 150,4 µg/m³; angka di atas hanya stasiun kawasan gambut (Samarinda, kawasan industri, dihitung terpisah). Selisih hari kerja dan akhir pekan: median 0,03%."
       supports={[
-        <Card key="a" title={`Puncak gambut: 70 → 108 → 336 ${UG}`} sub="Rata-rata bulanan kawasan gambut, tiga tahun ditumpuk">
-          <Chart option={seasonal} height={250} />
+        <Card key="a" title="Rata-rata bulanan kawasan gambut" sub="Tiga tahun ditumpuk; angka = puncak tiap tahun">
+          <Chart option={seasonal} height={260} />
         </Card>,
-        <Card key="b" title="Siaga mulai akhir Juli" sub={`Minggu pertama ≥50% hari tidak sehat: ${Object.entries(cal.minggu_awal).map(([y, w]) => `${y}: mg ${w}`).join(" · ")}`}>
-          <Chart option={calOpt} height={250} />
+        <Card key="b" title="Hari tidak sehat di kawasan gambut per minggu" sub={`% hari-stasiun gambut dengan PM2.5 > 55,4 ${UG}`}>
+          <Chart option={calOpt} height={260} />
         </Card>,
-        <Card key="c" title="Puncak pagi 07–08 & sore 17–19; ozon memuncak siang" sub="Profil jam lokal, relatif terhadap rata-rata harian"
+        <Card key="c" title="Pola jam" sub="Relatif terhadap rata-rata harian (1 = rata-rata)"
           right={<Seg value={pol} onChange={setPol} options={[["pm25", "PM2.5"], ["gas", "O₃ & NO₂"]]} />}>
-          <Chart option={diuOpt} height={250} />
+          <Chart option={diuOpt} height={260} />
         </Card>,
       ]}
     />

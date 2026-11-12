@@ -1,7 +1,7 @@
 import { useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
-import { Card, Page, Seg } from "../components/Layout";
+import { Card, Kpi, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
 import { fmt, UG } from "../lib/format";
 import { useApp, usePick, useStationFilter } from "../lib/state";
@@ -25,7 +25,7 @@ export default function Q3Pemicu() {
   const filt = useStationFilter();
   const [skala, setSkala] = useState<"Skala asli (µg/m³)" | "Skala log">("Skala asli (µg/m³)");
   const [rs, setRs] = useState("JKT-02");
-  if (!d) return <div className="loading">Memuat…</div>;
+  if (!d) return <div className="loading">Memuat data faktor pemicu…</div>;
   const [dec, shap, tr, rose] = d;
   const comps = Object.keys(dec.skala[skala]);
 
@@ -34,8 +34,8 @@ export default function Q3Pemicu() {
     legend: { bottom: 0 }, grid: { left: 8, right: 10, top: 10, bottom: 40 },
     xAxis: { type: "value", max: 100, axisLabel: { formatter: "{value}%" } }, yAxis: { type: "category", data: ["Variasi PM2.5 harian"], show: false },
     series: comps.map((c, i) => ({
-      name: c, type: "bar", stack: "a", barWidth: 70, itemStyle: { color: DEC_COL[i] },
-      label: { show: dec.skala[skala][c] > 4, formatter: (p: any) => `${fmt(p.value, 0)}%`, color: "#fff", fontSize: 20, fontWeight: 750 },
+      name: c, type: "bar", stack: "a", barWidth: 56, itemStyle: { color: DEC_COL[i] },
+      label: { show: dec.skala[skala][c] > 4, formatter: (p: any) => `${fmt(p.value, 0)}%`, color: i === 2 ? C.ink : "#fff", fontSize: 18, fontWeight: 700 },
       data: [dec.skala[skala][c]],
     })),
   };
@@ -73,35 +73,36 @@ export default function Q3Pemicu() {
     ],
   };
 
+  const dk = dec.skala["Skala asli (µg/m³)"];
+  const cuaca = ["Angin (kecepatan & arah)", "Kelembapan", "Suhu"].reduce((a, k) => a + (shap["kontribusi_%"][k] ?? 0), 0);
+
   return (
     <Page path="/pemicu"
-      answer="Musim kebakaran menentukan lonjakan, lalu lintas menentukan tingkat dasar; cuaca harian hampir tidak berperan."
+      kpis={<>
+        <Kpi k="Variasi dari musim & episode" v={`${fmt(dk["Musim/episode (stasiun-bulan)"], 0)}%`} note="dekomposisi varians, skala asli" />
+        <Kpi k="Variasi dari lokasi stasiun" v={`${fmt(dk["Lokasi (antar stasiun)"], 0)}%`} note={`naik ke ${fmt(dec.skala["Skala log"]["Lokasi (antar stasiun)"], 0)}% pada skala log`} />
+        <Kpi k="Korelasi lalu lintas – PM2.5" v={`ρ = ${fmt(tr.rho_pm25, 2)}`} note="di luar musim asap (Jan–Jun)" />
+        <Kpi k="Kontribusi cuaca harian" v={`${fmt(cuaca, 0)}%`} note="angin, kelembapan, suhu (SHAP)" />
+      </>}
       main={
-        <Card title={`${fmt(dec.skala[skala]["Musim/episode (stasiun-bulan)"], 0)}% variasi PM2.5 berasal dari musim & episode, ${fmt(dec.skala[skala]["Lokasi (antar stasiun)"], 0)}% dari lokasi`}
-          sub="Dekomposisi varians PM2.5 harian: antar stasiun → antar bulan dalam stasiun → hari ke hari."
+        <Card title="Sumber variasi PM2.5 harian"
+          sub="Dekomposisi varians: antar stasiun → antar bulan dalam stasiun → hari ke hari."
           right={<Seg value={skala} onChange={setSkala} options={[["Skala asli (µg/m³)", "Skala asli"], ["Skala log", "Skala log"]]} />}
-          note={skala === "Skala log"
-            ? "Skala log menilai perbedaan relatif (×2, ×3). Dilihat begini, perbedaan antar lokasi (kota tercemar vs bersih) lebih menonjol: 59%."
-            : "Skala asli didominasi episode asap ratusan µg/m³. Variasi jam-dalam-sehari hanya 8,6% dari variasi data per jam."}>
-          <Chart option={decOpt} height={200} />
+          note={skala === "Skala log" ? "Skala log menimbang perubahan relatif (×2, ×3), sehingga beda kota tercemar vs bersih lebih menonjol." : "Skala asli didominasi episode asap ratusan µg/m³."}>
+          <Chart option={decOpt} height={170} />
         </Card>
       }
-      means={[
-        <>Pencegahan kebakaran adalah tuas terbesar untuk <b>lonjakan</b>; pengendalian lalu lintas untuk <b>beban kronis</b>.</>,
-        <>Lalu lintas dan jarak ke jalan saling terkait (ρ = {fmt(tr.rho_lalu_lintas_jarak, 2)}), jadi dibaca sebagai satu faktor "paparan jalan raya".</>,
-        <>Korelasi cuaca per jam sangat lemah (median |ρ| ≤ 0,12).</>,
-      ]}
-      method={`Kontribusi faktor dari LightGBM + SHAP pada simpangan log PM2.5 dari rata-rata stasiunnya sendiri; dilatih 2024–2025, diuji 2026 (R² ${fmt(shap.r2_uji_2026, 2)}).`}
+      method={`Dekomposisi varians bertingkat: stasiun → bulan → hari. Kontribusi faktor dari LightGBM + SHAP pada simpangan log PM2.5 dari rata-rata stasiunnya sendiri; dilatih 2024–2025, diuji 2026 (R² ${fmt(shap.r2_uji_2026, 2)}). Lalu lintas dan jarak ke jalan saling terkait (ρ = ${fmt(tr.rho_lalu_lintas_jarak, 2)}), jadi dibaca sebagai satu faktor paparan jalan raya. Korelasi cuaca per jam: median |ρ| ≤ 0,12.`}
       supports={[
-        <Card key="a" title={`Musim ${fmt(shap["kontribusi_%"]["Musim (bulan & hari-dalam-tahun)"], 0)}%, cuaca hanya ±14%`} sub="Kontribusi faktor dalam satu stasiun (% dari total)">
-          <Chart option={shapOpt} height={240} />
+        <Card key="a" title="Kontribusi faktor dalam satu stasiun" sub="% dari total kontribusi SHAP">
+          <Chart option={shapOpt} height={250} />
         </Card>,
-        <Card key="b" title={`Makin padat lalu lintas, makin tinggi tingkat dasar (ρ = ${fmt(tr.rho_pm25, 2)})`} sub="Di luar musim asap (Jan–Jun). Titik besar = dekat jalan; cokelat = gambut.">
-          <Chart option={trOpt} height={240} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} />
+        <Card key="b" title="Lalu lintas dan PM2.5, Januari–Juni" sub="Satu titik = satu stasiun. Titik besar = dekat jalan; oranye = gambut.">
+          <Chart option={trOpt} height={250} onClick={(p: any) => p.data?.code && openProfil(p.data.code)} />
         </Card>,
-        <Card key="c" title="Arah angin tidak membedakan: selisih 0–6%" sub={`Pollution rose ${byCode[rs].nama} · rentang PM2.5 antar arah ${fmt(rose["rentang_pm25_%"][rs], 1)}%`}
+        <Card key="c" title="Arah angin dan PM2.5" sub={`${byCode[rs].nama} · selisih antar arah ${fmt(rose["rentang_pm25_%"][rs], 1)}%`}
           right={<div className="tabs">{Object.keys(rose.data).map((c) => <button key={c} aria-pressed={rs === c} onClick={() => setRs(c)}>{byCode[c].nama}</button>)}</div>}>
-          <Chart option={roseOpt} height={240} />
+          <Chart option={roseOpt} height={250} />
         </Card>,
       ]}
     />

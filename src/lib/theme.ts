@@ -2,11 +2,11 @@
  * Token warna semantik. Aturan: SATU warna = SATU arti di seluruh dashboard.
  *
  *  STATUS   → hanya kategori ISPU resmi (Permen LHK 14/2020). Tidak dipakai untuk hal lain.
- *  GAMBUT   → cokelat gambut: kawasan gambut / musim asap. Pembandingnya selalu abu (OTHER).
+ *  GAMBUT   → oranye bakar: kawasan gambut / musim asap. Pembandingnya selalu abu (OTHER).
  *  FOCUS    → slate gelap: "ukuran yang sedang dibahas" bila bukan gambut & bukan status.
- *  PICK     → 3 slot Stasiun Pilihan: ungu, teal, tinta (+ simbol ● ◆ ▲). Hanya untuk stasiun pilihan.
- *  ALERT    → magenta: masalah data yang tersembunyi.
- *  RAMP     → gradasi cokelat untuk besaran berurutan (tangga WHO, kalender risiko, tahun).
+ *  PICK     → 3 slot Stasiun Pilihan: ungu, mawar, toska (+ simbol ● ◆ ▲). Hanya untuk stasiun pilihan.
+ *  ALERT    → merah tua: masalah data yang tersembunyi.
+ *  RAMP     → gradasi oranye untuk besaran berurutan gambut (tahun, kalender); TIER slate-teal untuk tangga WHO.
  *  UI       → hijau hutan hanya untuk kerangka (header, tombol, tautan), tidak untuk data.
  */
 export const ISPU_LAB = ["Baik", "Sedang", "Tidak Sehat", "Sangat Tidak Sehat", "Berbahaya"] as const;
@@ -30,13 +30,28 @@ type Pal = {
     /** Opsional untuk tema halaman gelap: kartu, teks di atas latar, dan aksen 10%. */
     dark?: boolean; card?: string; onBg?: string; onBgSoft?: string; hi?: string; onHi?: string;
     /** Font & bentuk tombol (dari database ui-ux-pro-max). */
-    fontHead?: string; fontBody?: string; fontNum?: string; radius?: string };
+    fontHead?: string; fontBody?: string; fontNum?: string; radius?: string;
+    /** Sidebar terang/gelap: warna item aktif, hover, garis tepi. */
+    sideActiveBg?: string; sideActiveTx?: string; sideHover?: string; sideStrong?: string; sideEdge?: string };
 };
+/**
+ * Palet data yang berlaku (klinis/inst/publik). Dipilih ulang 12 Nov dan diuji dengan
+ * validator buta warna (skill dataviz, --pairs all): ungu/mawar/toska/oranye lolos
+ * ΔE CVD ≥ 9 dan ΔE normal ≥ 15.
+ *  - gambut = oranye bakar (asap/api), pembanding = abu dingin
+ *  - focus  = slate-teal, serumpun warna kerangka, untuk satu ukuran tanpa kelompok
+ *  - pick   = ungu ●, mawar ◆, toska ▲ (label teks tetap warna tinta)
+ *  - alert  = merah tua, hanya untuk masalah data tersembunyi (selalu berlabel teks)
+ *  - ramp   = gradasi oranye satu hue (tahun gambut, kalender)
+ *  - tier   = gradasi slate-teal satu hue (tangga target WHO)
+ */
 const DATA_LIGHT = {
-  data: { gambut: "#794c20", gambutSoft: "#cfb197", other: "#8a9097", otherSoft: "#d5d8db", focus: "#50565c", alert: "#1a1d21", na: "#e2e4e8", tipeSedang: "#8e9398", tipeBersih: "#c0c5c9" },
-  pick: ["#581b9d", "#1a8582", "#cb73c4"],
-  ramp: ["#f9ece1", "#e7cbb4", "#cba17d", "#95663a", "#794c20", "#482b0e"],
+  data: { gambut: "#d4622a", gambutSoft: "#f2b896", other: "#9aa4ab", otherSoft: "#d5dadd", focus: "#2c5d6e", alert: "#b42318", na: "#e3e7ea", tipeSedang: "#8d989f", tipeBersih: "#c3cace" },
+  pick: ["#6250d6", "#c0397a", "#1baf7a"],
+  ramp: ["#fde9dc", "#f6c3a3", "#ee9a6c", "#d4622a", "#a8451a", "#6e2c10"],
 };
+/** Gradasi slate-teal untuk besaran berurutan yang bukan gambut (tangga WHO). Terang → gelap. */
+export const TIER = ["#d3e4e9", "#a9c9d2", "#7aa8b6", "#4f8597", "#2c5d6e", "#163a47"];
 const DATA_CREAM = {
   data: { gambut: "#794c20", gambutSoft: "#cfb197", other: "#a3a7ad", otherSoft: "#d5d8db", focus: "#50565c", alert: "#1a1d21", na: "#ddd8cc", tipeSedang: "#8e9398", tipeBersih: "#c0c5c9" },
   pick: ["#581b9d", "#1a8582", "#b05baa"],
@@ -86,7 +101,30 @@ PALETTES.publik = {
 PALETTES.klinis = {
   ...DATA_LIGHT,
   ui: { side: "#164E63", sideTx: "#d6eef4", sideSub: "#9cc4cf", bg: "#F3FAFB", surface2: "#E6F2F4", ink: "#0C2B36", inkSoft: "#4A5F66", line: "#CFE3E8", accent: "#164E63", accent2: "#0E6A80", mapLand: "#e0ecef",
-    card: "#FFFFFF", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", fontNum: "'Fira Code Variable'", radius: "8px" },
+    card: "#FFFFFF", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", radius: "8px" },
+};
+
+/* ---- kandidat kerangka 12 Nov: netral supaya warna data yang menonjol ---- */
+/** "Asap": arang berasap + latar abu hangat. Kerangka = asap, oranye data = api. */
+PALETTES.asap = {
+  ...DATA_LIGHT,
+  ui: { side: "#202327", sideTx: "#d5d8dc", sideSub: "#a3a9b0", bg: "#f4f4f1", surface2: "#ebebe7", ink: "#1b1e22", inkSoft: "#575d64", line: "#e0e0db", accent: "#202327", accent2: "#3c424a", mapLand: "#e7e7e2",
+    card: "#FFFFFF", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", radius: "8px",
+    sideActiveBg: "#f4f4f1", sideActiveTx: "#1b1e22", sideHover: "rgba(255,255,255,0.07)", sideStrong: "#ffffff", sideEdge: "transparent" },
+};
+/** "Kertas": sidebar terang, latar kertas hangat, aksen tinta. Paling lapang. */
+PALETTES.kertas = {
+  ...DATA_LIGHT,
+  ui: { side: "#fbfaf7", sideTx: "#3d434a", sideSub: "#6b7178", bg: "#f5f3ee", surface2: "#eeebe4", ink: "#1b1e22", inkSoft: "#575d64", line: "#e3dfd6", accent: "#1b1e22", accent2: "#3c424a", mapLand: "#ebe7de",
+    card: "#FFFFFF", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", radius: "8px",
+    sideActiveBg: "#1b1e22", sideActiveTx: "#ffffff", sideHover: "rgba(27,30,34,0.06)", sideStrong: "#1b1e22", sideEdge: "#e3dfd6" },
+};
+/** "Malam": biru malam + latar abu dingin. Paling formal/institusional. */
+PALETTES.malam = {
+  ...DATA_LIGHT,
+  ui: { side: "#14233d", sideTx: "#d3dbe8", sideSub: "#9eacc2", bg: "#f3f5f8", surface2: "#e8ecf2", ink: "#121a28", inkSoft: "#4f5a6b", line: "#dce2ea", accent: "#14233d", accent2: "#2c4570", mapLand: "#e3e8ef",
+    card: "#FFFFFF", fontHead: "'Fira Sans'", fontBody: "'Fira Sans'", radius: "8px",
+    sideActiveBg: "#f3f5f8", sideActiveTx: "#121a28", sideHover: "rgba(255,255,255,0.08)", sideStrong: "#ffffff", sideEdge: "transparent" },
 };
 
 function readKey() {
@@ -116,6 +154,9 @@ export function applyChrome() {
     "--font-body": `${u.fontBody ?? "'Fira Sans'"}, system-ui, sans-serif`,
     "--font-num": `${u.fontNum ?? u.fontBody ?? "'Fira Sans'"}, system-ui, sans-serif`,
     "--btn-radius": u.radius ?? "10px",
+    "--side-active-bg": u.sideActiveBg ?? "#f7f5f0", "--side-active-tx": u.sideActiveTx ?? u.accent,
+    "--side-active-icon-bg": u.sideActiveBg ? u.sideActiveTx ?? u.side : u.side, "--side-active-icon-tx": u.sideActiveBg ? u.sideActiveBg : "#ffffff",
+    "--side-hover": u.sideHover ?? "rgba(255,255,255,0.08)", "--side-strong": u.sideStrong ?? "#ffffff", "--side-edge": u.sideEdge ?? "transparent",
   };
   document.documentElement.classList.toggle("has-hi", !!u.hi);
   document.documentElement.classList.toggle("dark-page", !!u.dark);
@@ -129,16 +170,16 @@ export const C = {
   inkSoft: PAL.ui.inkSoft,
   grid: PAL.ui.line,
 };
-/** Gradasi cokelat (terang → gelap) untuk besaran berurutan. */
+/** Gradasi oranye (terang → gelap) untuk besaran berurutan. */
 export const RAMP = PAL.ramp;
-export const YEAR_COL: Record<string, string> = { "2024": RAMP[2], "2025": RAMP[3], "2026": RAMP[5] };
+export const YEAR_COL: Record<string, string> = { "2024": RAMP[2], "2025": RAMP[4], "2026": RAMP[5] };
 
 export const GAMBUT_COL = { Gambut: C.gambut, "Non-gambut": C.other };
 /** Tipe hasil clustering: hanya Episodik yang berwarna (cerita gambut), sisanya gradasi abu. */
 export const TIPE_COL: Record<string, string> = {
   "Episodik (asap musiman)": C.gambut, "Kronis (tinggi & stabil)": C.focus, "Sedang & stabil": C.tipeSedang, "Latar bersih": C.tipeBersih,
 };
-/** Kawasan tidak diberi warna sendiri: gambut cokelat, lainnya abu. Label teks yang membedakan. */
+/** Kawasan tidak diberi warna sendiri: gambut oranye, lainnya abu. Label teks yang membedakan. */
 export const kawasanCol = (k: string) => (k === "Gambut" ? C.gambut : C.other);
 
 /** Stasiun Pilihan: tiga warna slot yang tidak dipakai data lain, plus simbol. */
@@ -152,10 +193,10 @@ export const INK_SOFT = C.inkSoft;
 /** Gaya teks bawaan chart (ukuran minimum 11 px). */
 export const AXIS = { color: C.inkSoft, fontSize: 11 };
 
-/** Grade kualitas data: gradasi abu (A terang → E gelap). Bukan warna status. */
+/** Grade kualitas data: gradasi abu (A terang → E gelap). Bukan warna status; E sengaja abu tua, bukan hitam ISPU "Berbahaya". */
 export const GRADE_STYLE: Record<string, { bg: string; fg: string }> = {
-  A: { bg: "#e6ebe8", fg: "#18211c" }, B: { bg: "#d3d9dc", fg: "#18211c" }, C: { bg: "#aab3ba", fg: "#18211c" },
-  D: { bg: "#56615a", fg: "#ffffff" }, E: { bg: "#18211c", fg: "#ffffff" },
+  A: { bg: "#e6ebe8", fg: "#18211c" }, B: { bg: "#d3d9dc", fg: "#18211c" }, C: { bg: "#b4bcc2", fg: "#18211c" },
+  D: { bg: "#687278", fg: "#ffffff" }, E: { bg: "#4a5358", fg: "#ffffff" },
 };
 /** Temuan jaringan: hanya "tersembunyi" yang memakai warna alarm. */
 export const KAT_COL: Record<string, string> = { Andal: C.other, "Diakui metadata": C.focus, "TERSEMBUNYI (status Active)": C.alert };

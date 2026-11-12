@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import type { EChartsOption } from "echarts";
 import Chart from "../components/Chart";
-import { Card, Page, Seg } from "../components/Layout";
+import { Card, Kpi, Page, Seg } from "../components/Layout";
 import { useData } from "../lib/data";
-import { fmt, fmtPct, UG } from "../lib/format";
-import { useApp } from "../lib/state";
-import { C, ISPU_COL, PICK_COL, PICK_SYMBOL } from "../lib/theme";
+import { fmt, fmtDate, fmtPct, UG } from "../lib/format";
+import type { HospitalDaily } from "../lib/types";
+import { dateAt, useApp } from "../lib/state";
+import { C, ISPU_COL, PICK_COL, PICK_GLYPH, PICK_SYMBOL } from "../lib/theme";
 
 type Dose = { kategori: string[]; hari_rs: number[]; gabungan: Record<string, number[]>; per_rs: Record<string, { hari: number[] } & Record<string, (number | null)[]>> };
 type RR = { gabungan: Record<string, { rr: number; lo: number; hi: number; I2: number; k: number }> };
@@ -16,13 +17,43 @@ type Eco = { rho: number; dipakai: string[]; data: { hospital_id: string; code: 
 const OUT = ["ISPA balita", "ISPA lansia", "Darurat asma", "PPOK", "Rawat napas umum", "Kardiovaskular", "Kematian"];
 
 export default function Q4Dampak() {
-  const d = useData<[Dose, RR, Lag, Age, Eco]>("dose_response", "rr", "lag", "age", "ecological");
+  const d = useData<[Dose, RR, Lag, Age, Eco, HospitalDaily]>("dose_response", "rr", "lag", "age", "ecological", "hospital_daily");
   const { pilihan, byCode } = useApp();
   const [out, setOut] = useState("Kematian");
+  const [tsOut, setTsOut] = useState("ISPA balita");
+
+  /** Rata-rata mingguan PM2.5 dan kasus (relatif terhadap rata-rata RS itu) untuk RS pasangan Stasiun Pilihan. */
+  const weekly = useMemo(() => {
+    if (!d) return null;
+    const h = d[5];
+    const nW = Math.ceil(h.n / 7);
+    const weeks = Array.from({ length: nW }, (_, w) => dateAt(w * 7));
+    const rows = pilihan.map((c, slot) => {
+      const hid = byCode[c]?.hospital_id;
+      const r = hid ? h.rs[hid] : undefined;
+      const key = h.outcome.find((o) => h.label[o] === tsOut);
+      if (!r || !key || !r[key]) return null;
+      const ys = r[key] as (number | null)[];
+      const all = ys.filter((v): v is number => v != null);
+      const base = all.reduce((a, b) => a + b, 0) / all.length;
+      const pm: (number | null)[] = [], y: (number | null)[] = [];
+      for (let w = 0; w < nW; w++) {
+        let sp = 0, kp = 0, sy = 0, ky = 0;
+        for (let i = w * 7; i < Math.min(h.n, w * 7 + 7); i++) {
+          if (r.pm25[i] != null) { sp += r.pm25[i]!; kp++; }
+          if (ys[i] != null) { sy += ys[i]!; ky++; }
+        }
+        pm.push(kp >= 4 ? sp / kp : null); y.push(ky >= 4 ? sy / ky / base : null);
+      }
+      return { c, slot, pm, y };
+    }).filter((x): x is NonNullable<typeof x> => x != null);
+    return { weeks, rows };
+  }, [d, pilihan, byCode, tsOut]);
   const [lagMode, setLagMode] = useState<"satu" | "gabung">("gabung");
   const [lagOut, setLagOut] = useState("ISPA balita");
-  if (!d) return <div className="loading">Memuat…</div>;
+  if (!d) return <div className="loading">Memuat data rumah sakit dan model dampak…</div>;
   const [dose, rr, lag, age, eco] = d;
+  const wk = weekly!;
 
   const doseOpt: EChartsOption = {
     tooltip: { trigger: "axis", axisPointer: { type: "shadow" }, valueFormatter: (v: any) => (v == null ? "–" : `${fmt(v, 2)}× hari biasa`) },
@@ -78,25 +109,50 @@ export default function Q4Dampak() {
 
   const ecoV = eco.data.filter((r) => eco.dipakai.includes(r.hospital_id));
 
+  const tsOpt: EChartsOption = {
+    tooltip: { trigger: "axis", axisPointer: { type: "line" }, valueFormatter: (v: any) => (v == null ? "–" : fmt(v, 2)) },
+    axisPointer: { link: [{ xAxisIndex: "all" }] },
+    legend: { top: 0, data: wk.rows.map((r) => byCode[r.c].nama) },
+    grid: [{ left: 8, right: 16, top: 34, height: "38%" }, { left: 8, right: 16, top: "58%", bottom: 40 }],
+    xAxis: [
+      { type: "category", data: wk.weeks.map(fmtDate), gridIndex: 0, axisLabel: { show: false }, axisTick: { show: false } },
+      { type: "category", data: wk.weeks.map(fmtDate), gridIndex: 1, axisLabel: { fontSize: 10.5 } },
+    ],
+    yAxis: [
+      { type: "log", min: 5, gridIndex: 0, name: `PM2.5 (${UG}) · skala log`, nameTextStyle: { align: "left" } },
+      { type: "value", gridIndex: 1, name: `${tsOut} · 1 = minggu biasa`, nameTextStyle: { align: "left" }, min: (v: any) => Math.max(0, Math.floor(v.min * 5) / 5) },
+    ],
+    dataZoom: [{ type: "inside", xAxisIndex: [0, 1] }],
+    series: [
+      ...wk.rows.map((r) => ({ name: byCode[r.c].nama, type: "line" as const, xAxisIndex: 0, yAxisIndex: 0, symbol: "none", data: r.pm, lineStyle: { width: 2 }, itemStyle: { color: PICK_COL[r.slot] },
+        markLine: r.slot === wk.rows[0].slot ? { silent: true, symbol: "none", lineStyle: { color: C.ink, type: "dashed" as const }, label: { formatter: "150 · ambang", position: "insideEndTop" as const, color: C.ink, fontSize: 10.5 }, data: [{ yAxis: 150 }] } : undefined })),
+      ...wk.rows.map((r) => ({ name: byCode[r.c].nama, type: "line" as const, xAxisIndex: 1, yAxisIndex: 1, symbol: "none", data: r.y, lineStyle: { width: 2 }, itemStyle: { color: PICK_COL[r.slot] } })),
+    ],
+  };
+  const rB = rr.gabungan["ISPA balita"], rK = rr.gabungan["Kematian"];
+
   return (
     <Page path="/dampak"
-      answer="Setiap PM2.5 berlipat dua, ISPA balita naik 56% di hari yang sama; di atas 150 µg/m³ kematian dan penyakit jantung melonjak."
+      kpis={<>
+        <Kpi k="ISPA balita, tiap PM2.5 berlipat dua" v={fmtPct((rB.rr - 1) * 100, 0, true)} note={`CI 95% ${fmtPct((rB.lo - 1) * 100, 0, true)} s.d. ${fmtPct((rB.hi - 1) * 100, 0, true)}`} />
+        <Kpi k="Kematian, tiap PM2.5 berlipat dua" v={fmtPct((rK.rr - 1) * 100, 0, true)} note={`CI 95% ${fmtPct((rK.lo - 1) * 100, 0, true)} s.d. ${fmtPct((rK.hi - 1) * 100, 0, true)}`} />
+        <Kpi k="Kematian pada hari Berbahaya" v={`${fmt(dose.gabungan["Kematian"][4], 1)}×`} note={`hari biasa · PM2.5 > 250 ${UG}`} />
+        <Kpi k="Jeda paparan → kasus" v="Hari yang sama" note="jeda 1–3 hari & plasebo tidak bermakna" />
+      </>}
       main={
-        <Card title={`Kategori Berbahaya: ${out.toLowerCase()} ±${fmt(dose.gabungan[out][4], 1)}× hari biasa`}
-          sub="Kasus harian dibagi rata-rata RS itu sendiri (1 = hari biasa). Simbol berwarna = RS pasangan stasiun pilihan."
-          right={<select value={out} onChange={(e) => setOut(e.target.value)} aria-label="Pilih penyakit" style={{ font: "inherit", padding: "5px 8px", borderRadius: 8, border: "1px solid var(--line)" }}>{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
-          <Chart option={doseOpt} height={400} ariaLabel="Dosis-respons per kategori ISPU" />
+        <Card title="PM2.5 dan kasus rumah sakit per minggu" sub="Atas: PM2.5 stasiun. Bawah: kasus di RS pasangannya, dibagi rata-rata RS itu (1 = minggu biasa). Ganti stasiun di bar atas; gulir di grafik untuk memperbesar."
+          right={<select value={tsOut} onChange={(e) => setTsOut(e.target.value)} aria-label="Pilih jenis kasus" className="pick-select">{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
+          {wk.rows.length ? <Chart option={tsOpt} height={440} ariaLabel="PM2.5 dan kasus rumah sakit mingguan" />
+            : <p className="note">Stasiun pilihan belum punya RS pasangan dengan data PM2.5 yang layak. Pilih stasiun lain di bar atas, misalnya {PICK_GLYPH[0]} Palangka Raya.</p>}
         </Card>
       }
-      means={[
-        <>Siaga RS harus berlaku <b>di hari yang sama</b> dengan lonjakan asap, bukan beberapa hari sesudahnya.</>,
-        <>Ambang <b>150 {UG}</b> adalah titik ketika kematian & kardiovaskular melonjak.</>,
-        <>Balita dan lansia sama rentan (p = {fmt(age.p_beda, 2)}); beban absolut lansia lebih besar.</>,
-        <>Bahasa: "berasosiasi dengan". Data sintetis, bukan bukti kausal individual.</>,
-      ]}
-      method="Model dua tahap: quasi-Poisson per RS (log₂ PM2.5 hari yang sama + spline waktu 12 df + suhu + hari), digabung meta-analisis random effects. Stabil di 8 uji sensitivitas."
+      method="Model dua tahap: quasi-Poisson per RS (log₂ PM2.5 hari yang sama + spline waktu 12 df + suhu + hari), digabung meta-analisis random effects. Stabil di 8 uji sensitivitas. Data sintetis: dibaca sebagai asosiasi, bukan bukti sebab-akibat."
       supports={[
-        <Card key="a" title="ISPA balita +56%, asma +61%, kematian +27%" sub="Kenaikan risiko tiap PM2.5 berlipat dua (CI 95%)">
+        <Card key="d" title="Kasus relatif menurut kategori ISPU" sub="1 = hari biasa di RS itu. Simbol berwarna = RS pasangan stasiun pilihan."
+          right={<select value={out} onChange={(e) => setOut(e.target.value)} aria-label="Pilih penyakit" className="pick-select">{OUT.map((o) => <option key={o}>{o}</option>)}</select>}>
+          <Chart option={doseOpt} height={300} ariaLabel="Dosis-respons per kategori ISPU" />
+        </Card>,
+        <Card key="a" title="Kenaikan risiko tiap PM2.5 berlipat dua" sub="Batang = perkiraan, garis = CI 95%">
           <div style={{ display: "grid", gap: 7, marginTop: 6 }}>
             {OUT.map((o) => {
               const r = rr.gabungan[o];
@@ -104,7 +160,7 @@ export default function Q4Dampak() {
               return (
                 <div key={o} style={{ display: "grid", gridTemplateColumns: "118px 1fr 52px", alignItems: "center", gap: 8, fontSize: 12.5 }}>
                   <span>{o}</span>
-                  <span style={{ position: "relative", height: 14, background: "#f1eee7", borderRadius: 4 }}>
+                  <span style={{ position: "relative", height: 14, background: "var(--surface-2)", borderRadius: 4 }}>
                     <span style={{ position: "absolute", left: `${((r.lo - 1) * 100 / max) * 100}%`, width: `${((r.hi - r.lo) * 100 / max) * 100}%`, top: 6, height: 2, background: C.ink }} />
                     <span style={{ position: "absolute", left: 0, width: `${((r.rr - 1) * 100 / max) * 100}%`, top: 2, height: 10, background: C.focus, borderRadius: 3 }} />
                   </span>
@@ -115,13 +171,13 @@ export default function Q4Dampak() {
           </div>
           <p className="note">I² = keragaman efek antar RS. Garis hitam = rentang CI 95%.</p>
         </Card>,
-        <Card key="b" title="Dampaknya di hari yang sama, bukan tertunda" sub="Abu-abu = plasebo (PM2.5 sesudah kasus)"
+        <Card key="b" title="Efek menurut jeda hari" sub="Abu = plasebo (PM2.5 sesudah kasus)"
           right={<Seg value={lagMode} onChange={setLagMode} options={[["gabung", "Model gabungan"], ["satu", "Satu lag"]]} />}
           note={lagMode === "satu" ? "Model satu lag: plasebo pun tampak 'berefek' → hanya autokorelasi asap." : "Semua jeda dimasukkan bersamaan: hanya hari yang sama yang bermakna."}>
           <div className="tabs" style={{ marginBottom: 4 }}>{["ISPA balita", "Rawat napas umum", "Kematian"].map((o) => <button key={o} aria-pressed={lagOut === o} onClick={() => setLagOut(o)}>{o}</button>)}</div>
           <Chart option={lagOpt} height={210} />
         </Card>,
-        <Card key="c" title="Sama rentan; beban lansia lebih besar" sub={`RR ${fmt(age.rr_balita, 2)} vs ${fmt(age.rr_lansia, 2)} (p = ${fmt(age.p_beda, 2)})`}>
+        <Card key="c" title="Balita dan lansia" sub={`RR ${fmt(age.rr_balita, 2)} vs ${fmt(age.rr_lansia, 2)} (p = ${fmt(age.p_beda, 2)})`}>
           <Chart option={ageOpt} height={200} />
         </Card>,
       ]}

@@ -29,7 +29,7 @@ export default function Tentang() {
   const cols: [string, string][] = [["satuan_asli", "Satuan"], ["sel_teks_error", "Teks error"], ["sel_sentinel", "Sentinel"], ["baris_dibuang_qc", "Dibuang QC"], ["SUSPECT_dipakai", "SUSPECT dipakai"], ["baris_pm25>pm10", "PM2.5>PM10"], ["baris_sensor_beku", "Jam beku"], ["jam_pm25_diinterpolasi", "Jam diinterpolasi"], ["cakupan_pm25_%", "Cakupan PM2.5"]];
   return (
     <main>
-      <div className="q-head"><div className="q-kicker">Tentang Data</div><h1>Dari data mentah ke dashboard</h1></div>
+      <div className="q-head"><h1 className="page-title">Tentang Data</h1><p className="page-desc">Dari data mentah ke dashboard: langkah pembersihan, log per stasiun, model yang dipakai, keterbatasan, dan glosarium.</p></div>
       <div className="grid-sup">
         <section className="card" style={{ gridColumn: "span 2" }}>
           <h2>Alur pembersihan</h2>
@@ -56,7 +56,7 @@ export default function Tentang() {
                   {cols.map(([k]) => { const v = r[k]; return <td key={k} className="num">{typeof v === "number" ? (k.endsWith("%") ? `${fmt(v, 1)}%` : fmt(v, 0)) : typeof v === "boolean" ? (v ? "ya" : "tidak") : String(v ?? "–")}</td>; })}
                 </tr>))}
               </tbody></table>
-          ) : <p className="note">Memuat…</p>}
+          ) : <p className="note">Memuat log pembersihan…</p>}
         </div>
       </section>
       <div className="grid-sup">
