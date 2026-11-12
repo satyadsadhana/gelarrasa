@@ -334,3 +334,6 @@ details.more:not(.method-note) > summary { list-style: none; display: inline-fle
   .story-row { padding: 20px; }
   .story-big { font-size: 48px; }
 }
+
+/* Hero Beranda: pemilih stasiun melayang di kanan atas menutupi tombol "Sudut awal"; pindahkan ke atas legenda. */
+.hero3d .stage-reset { top: auto; bottom: 56px; }

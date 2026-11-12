@@ -64,8 +64,11 @@ type Props = {
 };
 
 const ELEV = 4200; // meter per µg/m³
+// Harus konstanta modul: fungsi default baru tiap render mengubah updateTriggers tiap frame,
+// sehingga transisi tinggi tiang dimulai ulang dari nol terus dan tiang tidak pernah naik.
+const ALL = () => true;
 
-export default function Stage3D({ values, view = "nasional", visible = () => true, height = 460, cap = null, labels, autoRotate = false, fallback, caption }: Props) {
+export default function Stage3D({ values, view = "nasional", visible = ALL, height = 460, cap = null, labels, autoRotate = false, fallback, caption }: Props) {
   const { stations, pilihan, openProfil } = useApp();
   const [geo, setGeo] = useState<unknown>(null);
   const [ok] = useState(webglOk);
@@ -74,7 +77,10 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
   const narrow = typeof innerWidth !== "undefined" ? Math.max(-1.3, Math.log2(Math.min(1, innerWidth / 1180))) : 0;
   const target = { ...base, zoom: base.zoom + narrow };
   const [vs, setVs] = useState<MapViewState>({ ...target, zoom: target.zoom - 0.6, pitch: 10, bearing: (target.bearing ?? 0) - 20 });
+  // 0 lalu 1 setelah deck siap (onLoad, WebGL dibuat async) + jeda fade halaman: tiang tumbuh lewat transisi deck.gl
   const [grow, setGrow] = useState(reduced() ? 1 : 0);
+  const growT = useRef(0);
+  useEffect(() => () => clearTimeout(growT.current), []);
   const [pulse, setPulse] = useState(0);
   const interacting = useRef(false);
   // Lepas konteks WebGL saat peta benar-benar dicopot (pindah halaman / tutup tur). Tanpa ini konteks lama
@@ -97,13 +103,12 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
     setVs({ ...target, transitionDuration: reduced() ? 0 : 2200, transitionInterpolator: new FlyToInterpolator({ speed: 1.2 }) });
   }, [target.longitude, target.latitude, target.zoom, target.pitch, target.bearing]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // tiang tumbuh dari nol + denyut asap + putar pelan (berhenti saat pengguna menggeser)
+  // denyut asap + putar pelan (berhenti saat pengguna menggeser)
   useEffect(() => {
     if (reduced()) return;
     let raf = 0; const t0 = performance.now();
     const tick = (t: number) => {
       const e = (t - t0) / 1600;
-      setGrow((g) => (g < 1 ? Math.min(1, 1 - Math.pow(1 - Math.min(e, 1), 3)) : 1));
       setPulse((t / 1000) % 1);
       if (autoRotate && !interacting.current && e > 1.6) setVs((v) => ({ ...v, bearing: (v.bearing ?? 0) + 0.035, transitionDuration: 0 }));
       raf = requestAnimationFrame(tick);
@@ -120,9 +125,14 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
   }), [stations, values, visible]);
   type D = (typeof data)[number];
   const lab = labels ?? pilihan;
+  // Di-memo: array baru tiap frame (render denyut) membuat transisi deck.gl mulai ulang dari nol terus.
+  const over = useMemo(() => (cap == null ? [] : data.filter((d) => d.shown && (d.v ?? 0) > cap)), [data, cap]);
+  const named = useMemo(() => data.filter((d) => lab.includes(d.s.code)), [data, lab.join()]); // eslint-disable-line react-hooks/exhaustive-deps
 
   if (!ok) return <>{fallback ?? null}</>;
 
+  const ease = (t: number) => (t < 0.5 ? 4 * t * t * t : 1 - Math.pow(-2 * t + 2, 3) / 2);
+  const rise = { duration: reduced() ? 0 : 1500, easing: ease };
   const capped = (v: number | null) => (v == null ? 0 : cap != null ? Math.min(v, cap) : v);
   const colFor = (d: D): [number, number, number, number] => {
     if (!d.shown || d.v == null) return [...NA, 90];
@@ -145,10 +155,11 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
     }),
     // bayangan bagian yang "dipotong" skenario Simulasi
     cap != null && new ColumnLayer<D>({
-      id: "potong", data: data.filter((d) => d.shown && (d.v ?? 0) > cap), diskResolution: 24, radius: 21000, extruded: true,
+      id: "potong", data: over, diskResolution: 24, radius: 21000, extruded: true,
       getPosition: (d) => [d.s.lon, d.s.lat, 9000], getElevation: (d) => (d.v ?? 0) * ELEV * grow,
       getFillColor: [255, 255, 255, 28], getLineColor: [255, 255, 255, 120], stroked: false, wireframe: true,
-      updateTriggers: { getElevation: [grow] }, parameters: { depthWriteEnabled: false },
+      transitions: { getElevation: { ...rise, enter: () => [0] } },
+      updateTriggers: { getElevation: [grow, values] }, parameters: { depthWriteEnabled: false },
     }),
     new ColumnLayer<D>({
       id: "tiang", data, diskResolution: 24, radius: 21000, extruded: true, pickable: true, autoHighlight: true,
@@ -157,7 +168,7 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
       getElevation: (d) => (d.shown ? capped(d.v) : 4) * ELEV * grow,
       getFillColor: colFor,
       material: { ambient: 0.55, diffuse: 0.55, shininess: 40, specularColor: [255, 255, 255] },
-      transitions: { getElevation: { duration: 650 }, getFillColor: { duration: 500 } },
+      transitions: { getElevation: rise, getFillColor: { duration: 500 } },
       updateTriggers: { getElevation: [grow, values, cap, visible], getFillColor: [values, visible, cap] },
       onClick: (i: PickingInfo<D>) => { if (i.object) openProfil(i.object.s.code); },
     }),
@@ -167,7 +178,7 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
       getLineColor: (d) => [...hex(PICK_COL[pilihan.indexOf(d.s.code)] ?? "#ffffff"), 255],
     }),
     new TextLayer<D>({
-      id: "nama", data: data.filter((d) => lab.includes(d.s.code)),
+      id: "nama", data: named,
       getPosition: (d) => [d.s.lon, d.s.lat, 9000 + capped(d.v) * ELEV * grow + 30000],
       getText: (d) => `${d.s.nama}${d.v != null ? ` · ${fmt(d.v, 0)}` : ""}`,
       getSize: 13, getColor: [240, 246, 248, 255], fontWeight: 600, fontFamily: "Plus Jakarta Sans Variable, system-ui, sans-serif",
@@ -186,6 +197,7 @@ export default function Stage3D({ values, view = "nasional", visible = () => tru
     <div className="stage3d" style={{ height }} ref={box}>
       <DeckGL
         viewState={vs}
+        onLoad={() => { growT.current = window.setTimeout(() => setGrow(1), 350); }}
         onViewStateChange={({ viewState, interactionState }) => {
           interacting.current = !!(interactionState?.isDragging || interactionState?.isRotating || interactionState?.isZooming) || interacting.current;
           setVs(viewState as MapViewState);
