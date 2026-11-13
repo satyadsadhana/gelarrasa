@@ -1,3 +1,5 @@
 node_modules
 dist
 *.tsbuildinfo
+data_notebook/aqms_per_jam.csv
+__pycache__/

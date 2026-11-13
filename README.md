@@ -26,6 +26,13 @@ Fitur pendukung: filter global (Periode, Pulau, Kawasan, Acuan), **Stasiun Pilih
 - PM2.5 dua kali lipat → ISPA balita +56%, kematian +27%, efeknya muncul di hari yang sama.
 - 2 stasiun punya masalah data yang tidak tercatat (mis. BJB-01 membeku 7.329 jam).
 
+## Data & Preprocessing
+
+- Data mentah panitia: `data/aqms/` (27 file AQMS) dan `data/reference/` (6 file).
+- Pipeline pembersihan (aturan yang sama dengan dashboard): `preprocessing/preprocess_notebook.py`.
+  Jalankan `python preprocessing/preprocess_notebook.py`; hasilnya di `data_notebook/`.
+- Panduan lengkap, aturan, dan bukti kecocokan dengan `public/data`: [preprocessing/README.md](preprocessing/README.md).
+
 ## Teknologi
 
 - [React 18](https://react.dev) + [TypeScript](https://www.typescriptlang.org) + [Vite](https://vitejs.dev)

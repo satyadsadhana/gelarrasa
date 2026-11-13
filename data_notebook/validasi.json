@@ -1,0 +1,22 @@
+{
+ "daily_json_hari_berbeda": 0,
+ "rata2_stasiun_selisih_maks": 0.005,
+ "tahunan_2025": {
+  "replikasi": "21/24",
+  "dashboard": "21/24"
+ },
+ "episode_hari": {
+  "replikasi": {
+   "2024": 84,
+   "2025": 89,
+   "2026": 198
+  },
+  "dashboard": {
+   "2024": 84,
+   "2025": 89,
+   "2026": 198
+  }
+ },
+ "LULUS": true,
+ "kasus_tidak_berubah_setelah_join": true
+}
